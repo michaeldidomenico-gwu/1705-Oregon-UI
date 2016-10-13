@@ -1,0 +1,157 @@
+---
+title: "Data Setup"
+author: "Daniel Shephard, Jake Bowers, Michael DiDomenico"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: html_document
+---
+
+#Import Data
+Create a separate dataframe for each month for the preliminary data analysis from March 2016 through September 2016 (7 months).
+
+```
+BYE - benefits end date (201711 is 11th week of 2017)
+Inital Claim Entered Date -- when they started
+Worker Profile SCore (WPS) - higher more risky of not getting a job
+Received Insert - Did you get an insert in the mailing. (Intervention 1)
+277 Field Office - Unique IDs for Field Offices in Pairs
+Welcome Process Completed Flag - Compliance: they actually had a meeting and made a four week plan and/or they actually made a claim (in the control group) These people actually get their UI payments. Both have to show up in person to get their payment and complete their process.
+WBA (weekly benefit amount) -- calculated amount, not actual amount
+Exhausted Benefits Flag -- Did you use up all of your benefits
+Claimed Previous Week Flag -- Did they make a claim in the week before the data pull
+Received UI Previous Week Flag -- did they get paid in the week before the data pull
+Previous Four Weeks Average Payment -- Average amount received over the past four weeks. (The average of which ever they have)
+Exited UI -- three consecutive weeks of no claims
+If Exited Date Claim Ended -- date that those three weeks started. what was first week.
+Claim Restarted -- in the ??week?? right before the data pull
+Line Flag 45 Date -- If you have caught in a fraudelent claim (so, an indicator that they are reemployed).
+Employed Flag -- Is an undercount. Based on reports of wages paid from employers.
+(Anyone earning money from an employer not their original employer...)
+Quarter of Wages --- the first quarter reported, were reported from those Employed (a 5 month delay in the wage file)
+WF0.Zip.Code --- perhaps zip code of the home of the person
+Email Flag --- do they have an email on file.
+Uploaded a Resume -- own or one that was created for them
+PEPP Plan Upload Date -- Date uploaded the plan (the staff member uploads the plan after the meeting) Som e staff members uploaded them all up in bulk.
+# Pepp Plans -- they should do more plans (mostly people did just one plan)
+PEPP Message Sent Date --  they they received the most recent emails, and what the content was, 12 or 14 different emails. Sequential. If they received email 5, then they received email 4.
+Pepp message -- message number
+# Pepp Messages Sent --- depends on length of time that they are on UI.
+
+```
+
+
+```{r Data_Import}
+library("openxlsx")
+library("excel.link")
+## library("RDCOMClient")
+## setwd("~/SBST/DOL/UI Oregon/Analysis/OR_Analysis")
+
+#----Set this to your main data file (the password protected file from DG)
+#The file can be downloaded here:
+#https://drive.google.com/open?id=0B8XYiVZ-nW2SOUNaZ1FDUDJrNk15VHlHNE8tTWNCUmdhbUZv
+## original.filepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/Data/PEPP UI Monthly Dataset 03282016-09302016 V2.xlsx"
+original.filepath <- "Data/PEPP UI Monthly Dataset 03282016-09302016 V2.xlsx"
+
+#Comment Out to Speed Program Run and Avoid multiple re-writes of the file
+## eApp <- COMCreate("Excel.Application")
+## wk <- eApp$Workbooks()$Open(Filename=original.filepath,Password="drpepper")
+## wk$SaveAs(Filename = "PEPP UI Monthly Dataset 03282016-09302016-ANALYSIS.xlsx", Password = '')
+#wk$Close(SaveChanges = F)
+
+## https://stackoverflow.com/questions/34233738/how-to-read-an-xls-file-that-is-encrypted-with-r
+## xl.read.file(filename, ...... password = NULL)
+
+#Once the code above has been run it can be commented out and only the line below is necessary for importing the data
+## filepath <- "Data/PEPP UI Monthly Dataset 03282016-09302016-ANALYSIS.xlsx"
+filepath <- "Data/PEPP UI Monthly Dataset 03282016-09302016 V2 No Password.xlsx" ## By hand remove the password protection.
+
+#Create dataframes for each month from Mar - Sep 2016
+or.df1 <- read.xlsx(filepath, sheet = 1) #March
+or.df2 <- read.xlsx(filepath, sheet = 2) #April
+or.df3 <- read.xlsx(filepath, sheet = 3) #May
+or.df4 <- read.xlsx(filepath, sheet = 4) #June
+or.df5 <- read.xlsx(filepath, sheet = 5) #July
+or.df6 <- read.xlsx(filepath, sheet = 6) #August
+or.df7 <- read.xlsx(filepath, sheet = 7) #September
+
+#Create a merged dataframe
+or.df.TOTAL <- rbind(or.df1, or.df2, or.df3, or.df4, or.df5, or.df6, or.df7)
+dim(or.df.TOTAL)
+stopifnot(nrow(or.df.TOTAL)==length(unique(or.df.TOTAL$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
+
+
+require(Hmisc)
+
+```
+
+
+```{r Recode_Data}
+#Set class for variables
+or.df.TOTAL$Worker.Profile.Score <- as.numeric(or.df.TOTAL$Worker.Profile.Score)
+or.df.TOTAL$Education.Level <- ordered(or.df.TOTAL$Education.Level,
+				       levels = c("NONE",  "1ST - 9TH GRADE", "10TH - 12TH GRADE",
+						  "HIGH SCHOOL DIPLOMA/GED",
+						  "VOCATIONAL CERTIFICATION/DEGREE",
+						  "POST SECONDARY COURSEWORK", "ASSOCIATES", "BACHELORS",
+						  "MASTERS", "DOCTORATE"))
+
+table(or.df.TOTAL$Employed.Flag, or.df.TOTAL$`277.Field.Office`)
+
+#Recode Y / N variables to 1 / 0
+or.df.TOTAL$uiexit <- 0 #set variable to 0
+or.df.TOTAL[or.df.TOTAL$Exited.UI.Flag=="Y","uiexit"] <- 1
+
+or.df.TOTAL$employed <- 0
+or.df.TOTAL[or.df.TOTAL$Employed.Flag=="Y", "employed"] <- 1
+
+or.df.TOTAL$insert <- 0
+or.df.TOTAL[or.df.TOTAL$Received.Insert.Flag=="Y", "insert"] <- 1
+
+or.df.TOTAL$welcome <- 0
+or.df.TOTAL[which(or.df.TOTAL$Welcome.Process.Completed.Flag=="Y"), "welcome"] <- 1
+
+#Recode dates
+or.df.TOTAL$uiexit.date <- as.Date(or.df.TOTAL$`If.Exited,.Date.Claim.Ended`, origin = "1900-01-01")
+or.df.TOTAL$claim.date <-  as.Date(or.df.TOTAL$Initial.Claim.Entered.Date, origin = "1900-01-01")
+```
+
+Save the file
+
+```{r}
+save(or.df.TOTAL, file="Data/or.df.TOTAL.rda")
+
+```
+
+
+# Key Analytic Variables
+
+`or.dfb$fo <- as.factor(or.dfb$277.Field.Office)`
+Units: 
+
+### Design/Intervention
+
+Pair random assignment of clusters (paired cluster assignment, individual level outcomes)
+
+treat 
+
+### Outcomes
+
+welcome meeting -- 
+
+uiexit -- stop making claims fro 3 weeks in a row before exhausting
+
+employment (employed.pair.delta )
+
+wages
+
+amount of time to exit (time.to.exit) --- survival analysis
+
+
+
+### Covariates
+
+Variables like race and lowest acceptable age, veteran status, etc.. were
+entered pre-treatment and in ignorance of treatment status during the filling
+out of their online profile.
+
+
+
