@@ -1,0 +1,566 @@
+---
+title: "Prelim Analysis/Data Inspection"
+author: "Daniel Shephard, Jake Bowers, Michael DiDomenico"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: html_document
+---
+
+```{r}
+load("Data/or.df.TOTAL.rda")
+```
+
+
+```{r Welcomes_by_Office, echo=FALSE}
+
+#Create a table showing the number of observations by month for each office
+offices <- c(unique(or.df.TOTAL$'277.Field.Office'))[1:14]
+months <- c('mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep')
+desc.table.1 <- matrix(nrow = 14, ncol = 7,
+		       dimnames = list(offices, months))
+
+#Add the counts of welcomes for March
+for(i in 1:14)
+{
+	desc.table.1[i, 1] <- length(which(or.df1$`277.Field.Office`==offices[i]))
+}
+
+#Add the counts of welcomes for April
+for(i in 1:14)
+{
+	desc.table.1[i, 2] <- length(which(or.df2$`277.Field.Office`==offices[i]))
+}
+
+#Add the counts of welcomes for May
+for(i in 1:14)
+{
+	desc.table.1[i, 3] <- length(which(or.df3$`277.Field.Office`==offices[i]))
+}
+
+#Add the counts of welcomes for June
+for(i in 1:14)
+{
+	desc.table.1[i, 4] <- length(which(or.df4$`277.Field.Office`==offices[i]))
+}
+
+#Add the counts of welcomes for July
+for(i in 1:14)
+{
+	desc.table.1[i, 5] <- length(which(or.df5$`277.Field.Office`==offices[i]))
+}
+
+#Add the counts of welcomes for August
+for(i in 1:14)
+{
+	desc.table.1[i, 6] <- length(which(or.df6$`277.Field.Office`==offices[i]))
+}
+
+#Add the counts of welcomes for September
+for(i in 1:14)
+{
+	desc.table.1[i, 7] <- length(which(or.df7$`277.Field.Office`==offices[i]))
+}
+
+knitr::kable(desc.table.1)
+```
+
+##Table of welcome conversations by field office
+The table above shows the number of welcome conversations conducted at each of the field offices in each month.
+
+
+#Next Model the Outcome of UI Exit w/o Treatment
+
+First, we deterimined which variables were most predictive of the outcome of interest (exiting UI) in order to remove unnecessary noise to amplify the power of the study.
+
+The variables that were most predictive were **Worker Profile Score**, **Education Level**, and **Disability Status**.
+
+```{r Model_Creation}
+#Create a function to predict UI Exit from a given "Variable"
+dsMonthlyExitModel <- function(df, variable)
+{
+
+	df$ui.exit.rc <- 0
+	df[df$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+	df$Worker.Profile.Score <- as.numeric(df$Worker.Profile.Score)
+
+	tmp.m1 <- lm(ui.exit.rc ~ df[, variable], data = df)
+	print(variable)
+	summary(tmp.m1)
+	return(tmp.m1)
+}
+
+#Create a function to run a model predicting UI Exit from 8 variables
+dsMonthlyExitModel2 <- function(df, variable)
+{
+
+	df$ui.exit.rc <- 0
+	df[df$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+	df$Worker.Profile.Score <- as.numeric(df$Worker.Profile.Score)
+
+	tmp.m1 <- lm(ui.exit.rc ~ df[, variable[1]] +
+		     df[, variable[2]] +
+		     df[, variable[3]] +
+		     df[, variable[4]] +
+		     df[, variable[5]] +
+		     df[, variable[6]] +
+		     df[, variable[7]] +
+		     df[, variable[8]], data = df)
+	print(variable)
+	summary(tmp.m1)
+	return(tmp.m1)
+}
+
+#Create a model to predict UI Exit from 3 variables -- the variables that were predictive in the 8 variable model
+dsMonthlyExitModel3 <- function(df, variable)
+{
+
+	df$ui.exit.rc <- 0
+	df[df$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+	df$Worker.Profile.Score <- as.numeric(df$Worker.Profile.Score)
+
+	tmp.m1 <- lm(ui.exit.rc ~ df[, variable[1]] +
+		     df[, variable[2]] +
+		     df[, variable[3]], data = df)
+	print(variable)
+	summary(tmp.m1)
+	return(tmp.m1)
+}
+
+
+#Use March and April Data first to determine if the 3 variables are significantly predictive
+or.df1$ui.exit.rc <- 0
+or.df1[or.df1$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+or.df1$Worker.Profile.Score <- as.numeric(or.df1$Worker.Profile.Score)
+variableList <- c("WBA", "Worker.Profile.Score", "Age", "Education.Level", "Race.White.Flag", "Ethnicity.Hispanic.Latino.Flag", "Ex.Offender.Flag", "Disability")
+stats <- c("Estimate", "sigma", "tstat", "pvalue")
+
+modelsAPRIL <- matrix(ncol = 4, nrow = 8, dimnames = list(variableList, stats))
+for(i in 1:8)
+{
+	modelsAPRIL[i, ] <- summary(dsMonthlyExitModel(or.df2, variableList[i]))$coefficient[2, ]
+}
+knitr::kable(modelsAPRIL) #These are the esimates of the first level of the models for APRIL (because March only had one week of PEP)
+
+#Make a multivariate model with all 8 predictive variables using both March and April
+comb.m1 <- (dsMonthlyExitModel2(or.df1, variableList)) #March
+comb.m2 <- (dsMonthlyExitModel2(or.df2, variableList)) #April
+summary(comb.m1)
+summary(comb.m2)
+
+#Use this model going forward, Worker.Profile.Score + Education.Level + Disability
+comb.m3 <- dsMonthlyExitModel3(or.df2, variableList[c(2, 4, 8)]) #April
+summary(comb.m3) #April
+
+#Run the models for May to see if it holds true -- Yes for Profile and Disability, no for Education
+comb.m3.MAY <- dsMonthlyExitModel3(or.df3, variableList[c(2, 4, 8)])
+summary(comb.m3.MAY)
+
+```
+
+
+#Pair Offices
+Now that the variables to be used for the covariate adjustment have been determined, create pair centered variables. 
+
+Pairs created by both urban, geography, size (number of people who came for UI), and quality of staff (judgement of the management in Oregon). Pairs provided by the management of the Oregon State program.
+
+```{r Pull_Pairs}
+#----ORIGINAL CODE FOR RANDOMIZATION------
+pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv" 
+pairs2 <- read.csv(pairfilepath, row.names = 1)
+pairs2 <- pairs2[order(pairs2$pair), ] #ensure that all pairs are next to each other
+#Random generation of uniform distribution x14, one number per field office
+#The highest number in the pair is allocated to the treatment group
+pairs2$treat <- 0
+set.seed(20160108) #note, ran once with 20150108, but changed to match date
+ran.no <- runif(14)
+for (i in 1:7)
+{
+	if(ran.no[i*2] > ran.no[(i*2)-1])
+	{
+		pairs2[i*2, "treat"] <- 1
+	}
+	else
+	{
+		pairs2[i*2-1, "treat"] <- 1
+	}
+
+}
+
+#Check the frequency of assignment with different seeds to ensure 50% chance
+#Run allocation logic used above through 1000 different seeds
+pair2 <- NA
+pair2 <- as.numeric(pair2)
+for (q in 1:1000) #run 1000 simulations of different seeds
+{
+	set.seed(20160107+q)
+	ran.no <- runif(14)
+	for (i in 1:7) #for a set of 7 pairs with the current seed do the following
+	{
+		if(ran.no[i*2] > ran.no[(i*2)-1]) #if the even number in the pair is greater than the odd number
+		{
+			pair2 <- rbind(pair2, 1) #then give it a treatment value of 1
+		}
+		else
+		{
+			pair2 <- rbind(pair2, 0) #else give the second in the pair a value of 0
+		}
+	}
+}
+treat.probability <- mean(pair2, na.rm=TRUE)
+samp.m1 <- (lm(ui.wks ~ treat, data=pairs2)) #original scores
+samp.m2 <- (lm(tot ~ treat, data=pairs2)) #original scores
+summary(samp.m1)
+summary(samp.m2)
+#Write out the new dataset with treatment allocation
+#The number of welcomes and average weeks on UI is from 2015 data (Pre Intervention)
+knitr::kable(pairs2[order(pairs2$pair, pairs2$treat), c(1:2, 14, 9, 12, 10)]) #Order by pairs, with control pair office first
+
+```
+
+
+```{r Pair_Centering}
+#----Missing Values so COV adjust in last step now-----
+#STEP 1: create covariate adjusted UI exit residuals
+#or.dfa <- ds.na.omit(or.df2)
+#m1.res <- ds.cov.uiexit(or.dfa)
+#summary(m1.res) #check model
+#or.dfa$uiexit.resid <- m1.res$residuals #insert residuals into dataframe to be the main outcome
+
+#This is now the first step
+#STEP 2: Create pair centered data
+ds.create.pairs <- function(df)
+{
+	df$pair <- as.character(NA)
+	df$treat <- 0
+	for(i in 1:14)
+	{
+		df[as.character(df$fo)==pairs2[i, "fo.num"], "pair"] <- as.character(pairs2[i, "pair"])
+		df[as.character(df$fo)==pairs2[i, "fo.num"], "treat"] <- pairs2[i, "treat"]
+	}
+
+	return(df)
+}
+
+or.dfb <- or.df.TOTAL
+or.dfb$pair <- as.character(NA)
+or.dfb$treat <- 0
+for(i in 1:14)
+{
+	or.dfb[which(as.character(or.dfb$`277.Field.Office`)==pairs2[i, "fo.num"]), "pair"] <- as.character(pairs2[i, "pair"])
+	or.dfb[which(as.character(or.dfb$`277.Field.Office`)==pairs2[i, "fo.num"]), "treat"] <- pairs2[i, "treat"]
+}
+
+tmp.pair <- c("a", "b", "c", "d", "e", "f", "g")
+
+or.dfb$uiexit.pair.delta <- NA #create a pair variable
+or.dfb$employed.pair.delta <- NA
+
+for(i in 1:7)
+{
+	pair.mean <- mean(or.dfb[or.dfb$pair==tmp.pair[i], "uiexit"], na.rm=TRUE)
+	print(pair.mean)
+	or.dfb[which(or.dfb$pair==tmp.pair[i]), "uiexit.pair.delta"] <-   or.dfb[which(or.dfb$pair==tmp.pair[i]),"uiexit"] - pair.mean #create pair centered variable
+
+	pair.mean.emp <- mean(or.dfb[or.dfb$pair==tmp.pair[i], "employed"], na.rm = TRUE)
+	print(pair.mean.emp)
+	or.dfb[which(or.dfb$pair==tmp.pair[i]), "employed.pair.delta"] <- or.dfb[which(or.dfb$pair==tmp.pair[i]), "employed"] - pair.mean.emp
+}
+
+
+```
+
+#Main Effects
+Now run the analysis to see if there is a treatment effect clustering by office
+
+```{r Main_Effects}
+
+library(nlme)
+library(lmtest)
+library(sandwich)
+library(car)
+or.dfb$fo <- as.factor(or.dfb$`277.Field.Office`)
+or.dfb <- or.dfb[which(!is.na(or.dfb$PEP.Unique.ID)), ]
+
+#STEP 3: run main model regressed on treatment and controlling for office cluster
+
+#Question 1: Did the insert result in more completed Welcomes?
+m.insert.welcome <- lme(welcome ~ insert,
+			random = ~1 | fo,
+			data = or.dfb)
+summary(m.insert.welcome)
+
+#Question 2a: ITT Did being assigned to a treatment FO increase UI exit rates, non covariate adjusted
+m.exit.itt1 <- lme(uiexit ~ treat,
+		   random = ~1 | fo,
+		   data = or.dfb)
+summary(m.exit.itt1)
+
+m.exit.itt1b <- lme(uiexit.pair.delta ~ treat,
+		    random = ~1 | fo,
+		    data = or.dfb)
+summary(m.exit.itt1b)
+
+#Question 2b: ITT Did being assigned to a treatment FO increase UI exit rates, pair & covariate adjusted
+#Create DF dropping missing cases
+or.dfb$BYE <- as.numeric(or.dfb$BYE)
+or.dfb.omit <- na.omit(or.dfb[c(1, 2, 5, 9, 30, 35, 42, 45, 46:56)])
+m.exit.itt2 <- lme(uiexit.pair.delta ~ treat + BYE + Education.Level + Worker.Profile.Score +
+		   Disability,
+	   random = ~1 | fo,
+	   data = or.dfb.omit)
+summary(m.exit.itt2) #only complete cases with covariate adjustment on pair centered outcome
+
+#Question 2c: TOT Among those that came in for a welcome meeting did PEP increase UI exit rates
+m.exit.tot1 <- lme(uiexit ~ treat,
+		   random = ~1 | fo,
+		   data = or.dfb[or.dfb$welcome==1, ])
+summary(m.exit.tot1)
+
+#Question 2d: TOT Among those that came in for a welcome did PEP increase UI exit rates, covariate adjusted
+m.exit.tot2 <- lme(uiexit.pair.delta ~ treat + BYE +  Worker.Profile.Score +
+		   Disability,
+	   random = ~1 | fo,
+	   data = or.dfb.omit[or.dfb.omit$welcome==1, ]) #dropped Education to improve model convergence
+summary(m.exit.tot2)
+
+#Question 3: TOT 2.0 Among those that came for a welcome, did uploading a plan
+or.dfb.omit2 <- na.omit(or.dfb[c(1, 2, 5, 30, 35, 42, 45, 46:56)])
+or.dfb.omit2$plans <- as.numeric(or.dfb.omit2$`#.of.PEPP.Plans`)
+or.dfb.omit2$emails <- as.numeric(or.dfb.omit2$`#.of.PEPP.Messages.Sent`)
+m.exit.plans.tot3 <- lme(uiexit.pair.delta ~ treat*plans + BYE +  Worker.Profile.Score +
+			 Disability,
+		 random = ~1 | fo,
+		 data = or.dfb.omit2[or.dfb.omit2$welcome==1, ]) #dropped Education to improve model
+summary(m.exit.plans.tot3)
+
+#----Only Individuals w/ BYE of 201718 or less [25th percentile]----
+#This analysis is to see what the impact is when there is more time for follow-up
+Hmisc::describe(as.numeric(or.dfb$BYE))
+or.df.LT <- or.dfb[or.dfb$BYE<=201718,]#longer term follow-up group
+or.df.LT$plans <- as.numeric(or.df.LT$`#.of.PEPP.Plans`)
+or.df.LT.omit <- or.dfb.omit2[or.dfb.omit2$BYE<=201718, ]
+
+m.exit.itt1.LT <- lme(uiexit ~ treat,
+		      random = ~1 | fo,
+		      data = or.df.LT)
+summary(m.exit.itt1.LT)
+
+#Absoluate & Relative Change
+
+ds.confidence.table <- function(m, outcome)
+{
+	ppt <- summary(m)$coefficients$fixed["treat"]
+	#relative <- summary(m)$coefficients$fixed["treat"] / summary(m)$coefficients$fixed["(Intercept)"]
+	temp.ci <- (sqrt(diag(vcov(m))["treat"])*1.96)
+	lower.ci <- ppt - temp.ci
+	upper.ci <- ppt + temp.ci
+
+	return(data.frame(outcome, ppt, lower.ci, upper.ci))
+}
+
+ds.confidence.table.plans <- function(m, outcome)
+{
+	ppt <- summary(m)$coefficients$fixed["plans"]
+	#relative <- summary(m)$coefficients$fixed["plans"] / summary(m)$coefficients$fixed["(Intercept)"]
+	temp.ci <- (sqrt(diag(vcov(m))["plans"])*1.96)
+	lower.ci <- ppt - temp.ci
+	upper.ci <- ppt + temp.ci
+
+	return(data.frame(outcome, ppt, lower.ci, upper.ci))
+}
+
+
+
+```
+
+#Employment Main Outcomes
+
+```{r Main_Employment}
+#----Employed Outcome----------
+#Question 4a: ITT Did being assigned to a treatment FO increase UI employment, non covariate adjusted
+m.employed.itt1 <- lme(employed~ treat,
+		       random = ~1 | fo,
+		       data = or.dfb)
+summary(m.employed.itt1)
+
+m.employed.itt1b <- lme(employed.pair.delta~ treat,
+			random = ~1 | fo,
+			data = or.dfb)
+summary(m.employed.itt1b)
+
+#Question 4b: ITT Did being assigned to a treatment FO increase employment rates, pair & covariate adjusted
+#Create DF dropping missing cases
+m.employed.itt2 <- lme(employed.pair.delta ~ treat + as.numeric(BYE) + Education.Level + Worker.Profile.Score +
+		       Disability,
+	       random = ~1 | fo,
+	       data = or.dfb.omit)
+summary(m.employed.itt2) #only complete cases with covariate adjustment on pair centered outcome
+
+#Question 4c: TOT Among those that came in for a welcome meeting did PEP increase employment rates
+m.employed.tot1 <- lme(employed~ treat,
+		       random = ~1 | fo,
+		       data = or.dfb[or.dfb$welcome==1, ])
+summary(m.employed.tot1)
+
+#Question 4d: TOT Among those that came in for a welcome did PEP increase employment, covariate adjusted
+m.employed.tot2 <- lme(employed.pair.delta ~ treat + BYE +  Worker.Profile.Score +
+		       Disability,
+	       random = ~1 | fo,
+	       data = or.dfb.omit[or.dfb.omit$welcome==1, ]) #dropped Education to improve model convergence
+summary(m.employed.tot2)
+
+#Question 5: TOT 2.0 Among those that came for a welcome, did uploading a plan
+m.employed.plans.tot3 <- lme(employed.pair.delta ~ treat*plans + BYE +  Worker.Profile.Score +
+			     Disability,
+		     random = ~1 | fo,
+		     data = or.dfb.omit2[or.dfb.omit2$welcome==1, ]) #dropped Education to improve model
+summary(m.employed.plans.tot3)
+
+#----Only Individuals w/ BYE of 201718 or less [25th percentile]----
+#This analysis is to see what the impact is when there is more time for follow-up
+m.employed.itt1.LT <- lme(employed~ treat,
+			  random = ~1 | fo,
+			  data = or.df.LT)
+summary(m.employed.itt1.LT)
+
+m.employed.itt2.LT <- lme(employed.pair.delta ~ treat  +
+			  Worker.Profile.Score + Education.Level + Disability,
+		  random = ~1 | fo,
+		  data = or.df.LT.omit)
+summary(m.employed.itt2.LT)
+
+m.employed.tot1.LT <- lme(employed.pair.delta ~ treat  +
+			  Worker.Profile.Score + Education.Level + Disability,
+		  random = ~1 | fo,
+		  data = or.df.LT.omit[or.df.LT.omit$welcome==1, ])
+summary(m.employed.tot1.LT)
+
+m.plans.emp.tot1.LT <- lme(employed.pair.delta ~ treat*plans  +
+			   Worker.Profile.Score + Education.Level + Disability,
+		   random = ~1 | fo,
+		   data = or.df.LT.omit[or.df.LT.omit$welcome==1, ])
+summary(m.plans.emp.tot1.LT)
+
+row1 <- ds.confidence.table(m.exit.itt1b, "UI_Exit_Pair_Centered")
+row2 <- ds.confidence.table(m.employed.itt1b, "Employed_Pair_Centered")
+
+knitr::kable(rbind(row1, row2))
+
+
+```
+
+
+Then aggregate the data by field office and see if there is a difference as a simple linear model.
+
+```{r Merge_Data2.0}
+pairs2$uiexit <- 0
+pairs2$emp <- 0
+for(i in 1:14)
+{
+	pairs2[i, "uiexit"] <- mean(or.df.LT[or.df.LT$fo==pairs2[i, "fo.num"], "uiexit"], na.rm = TRUE)
+	pairs2[i, "emp"] <- mean(or.df.LT[or.df.LT$fo==pairs2[i, "fo.num"], "employed"], na.rm = TRUE)
+}
+
+summary(lm(uiexit ~ treat, data = pairs2))
+summary(lm(emp ~ treat, data = pairs2))
+
+```
+
+#Visualization of Outcomes
+
+This is to see the differences between pairs more visually. The second and third plot is only the longer term follow-up.
+
+```{r Plot_Pairs, echo=FALSE}
+
+require(ggplot2)
+sbst_palette <- c("#2E9AC4", "#F9834A", "#03CAB9", "#FA5646", "#F2C446", "#999999", "#000000")
+
+pairs2$treat <- as.factor(pairs2$treat)
+plot1 <- ggplot(data = pairs2, aes(y = ui.wks, x = pair, shape = treat, color = treat)) + geom_point(size = 6) +
+	scale_color_manual(name = "Treatment", values=sbst_palette) +
+	scale_shape_manual(name = "Treatment", values= c(17, 16)) +
+	ggtitle("Before PEP UI Weeks") +
+	ylim(0, 17)
+plot1
+
+plot2 <- ggplot(data = pairs2, aes(y = uiexit, x = pair, shape = treat, color = treat)) + geom_point(size = 6) +
+	scale_color_manual(name = "Treatment", values=sbst_palette) +
+	scale_shape_manual(name = "Treatment", values= c(17, 16)) +
+	ggtitle("After PEP UI Exit") +
+	ylim(0.00, 0.70)
+plot2
+
+plot3 <- ggplot(data = pairs2, aes(y = emp, x = pair, shape = treat, color = treat)) + geom_point(size = 6) +
+	scale_color_manual(name = "Treatment", values=sbst_palette) +
+	scale_shape_manual(name = "Treatment", values= c(17, 16)) +
+	ggtitle("After PEP Employment") +
+	ylim(0, 0.10)
+plot3
+
+pairs2[, c(1,2,10,12,14,15, 16)]
+
+```
+
+#Survival Analysis
+The following analysis looks at the speed at which individuals are exiting UI or entering employment differentially at PEP field offices compared to control offices.
+
+```{r Survival_Analysis}
+require(survival)
+or.dfb$uiexit.date <- as.Date(or.dfb$`If.Exited,.Date.Claim.Ended`, origin = "1900-01-01")
+or.dfb$claim.date <-  as.Date(or.dfb$Initial.Claim.Entered.Date, origin = "1900-01-01")
+
+start.date <- strptime(c("27.03.2016"), format = "%d.%m.%Y")
+end.date <- strptime(c("30.09.2016"), format = "%d.%m.%Y")
+
+or.dfb$time.to.exit <- ifelse(or.dfb$uiexit==1, difftime(or.dfb$uiexit.date, or.dfb$claim.date), difftime(end.date, start.date))
+
+or.dfb.omit <- na.omit(or.dfb[c(1, 2, 5, 9, 30, 35, 42, 45, 46:57)])
+
+###################################################################
+#----Survival Model------------------------------------------------
+m.exit.survival <- coxph(Surv(time.to.exit, uiexit) ~ treat + BYE +
+			 WBA + Worker.Profile.Score +
+			 cluster(fo), data = or.dfb.omit)
+summary(m.exit.survival)
+
+plot(survfit(m.exit.survival), conf.int = TRUE, xlab = "Days", ylab = "Proportion Still on UI")
+
+
+###############################################################################
+#This doesn't work, trying to make survival function showing T vs C Graphically
+###############################################################################
+#or.treat.df <- with(or.dfb.omit, data.frame(treat =c(0,1),
+#                                            BYE=rep(mean(BYE, na.rm = TRUE), 2),
+#                                            WBA=rep(mean(WBA, na.rm = TRUE), 2),
+#                                            profile = rep(mean(Worker.Profile.Score, na.rm = TRUE), 2)))
+#or.treat.df
+#
+#plot(survfit(m.exit.survival, newdata = or.treat.df), conf.int=TRUE, lty=c(1,2),
+#     xlab="Days", ylab = "Proportion on UI")
+#
+#legend("topright", legend=c("Treat", "Control"),
+#       lty=c(1,2), inset=0.02)
+
+```
+
+#Descriptives
+Descibe the two groups
+
+```{r Descriptives}
+gender <- prop.table(table(or.dfb$Gender.Code, or.dfb$treat), 2) #Proportion of Females and Males by Treatment
+age <- c(mean(or.dfb[or.dfb$treat==0, "Age"], na.rm = TRUE), mean(or.dfb[or.dfb$treat==1, "Age"], na.rm = TRUE)) #Age
+white <- prop.table(table(or.dfb$Race.White.Flag, or.dfb$treat), 2) #Proportion of White Race by Treatment
+aa <- prop.table(table(or.dfb$Race.African.American.Flag, or.dfb$treat), 2) #Proportion of AA by Treatment
+disability <- prop.table(table(or.dfb$Disability, or.dfb$treat), 2) #Proportion of Disability by Treatment
+veteran <- prop.table(table(or.dfb$Veteran, or.dfb$treat), 2) #Proportion of Veteran by Treatment
+reentry <- prop.table(table(or.dfb$Ex.Offender.Flag, or.dfb$treat), 2) #Proportion of Ex Offenders by Treatment
+wba <- c(mean(or.dfb[or.dfb$treat==0, "WBA"], na.rm = TRUE), mean(or.dfb[or.dfb$treat==1, "WBA"], na.rm = TRUE)) #weekly benefit amount
+
+desc.table.2 <- rbind(gender, age, white, aa, disability, veteran, reentry, wba)
+row.names(desc.table.2) <- c("genderNA", "genderF", "genderM",
+			     "age", "nonWhite", "White", "nonAA", "AA",
+			     "disabilityNA", "disabilityNR", "disabilityNO", "disabilityYES",
+			     "vetNA", "vetOTHER", "vetEligible", "vetVietnam",
+			     "reentryNA", "reentryNO", "reentryYES", "WBA")
+knitr::kable(desc.table.2)
+```
+
