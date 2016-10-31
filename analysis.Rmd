@@ -5,8 +5,20 @@ date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: html_document
 ---
 
+
+This file executes the analysis of the experiment. It relies on files produced by the `datasetup.Rmd` file.
+
+```{r}
+library(lmtest)
+library(sandwich)
+library(car)
+```
+
+These two are produced by the `datasetup.Rmd` file.
+
 ```{r}
 load("Data/or.df.TOTAL.rda")
+load("Data/monthlyordat.rda")
 ```
 
 
@@ -60,11 +72,17 @@ for(i in 1:14)
 	desc.table.1[i, 7] <- length(which(or.df7$`277.Field.Office`==offices[i]))
 }
 
-knitr::kable(desc.table.1)
 ```
 
 ##Table of welcome conversations by field office
-The table above shows the number of welcome conversations conducted at each of the field offices in each month.
+The following table shows the number of welcome conversations conducted at each of the field offices in each month. The first column has the field office labels.
+
+```{r}
+knitr::kable(desc.table.1)
+```
+
+
+
 
 
 #Next Model the Outcome of UI Exit w/o Treatment
@@ -164,7 +182,8 @@ Pairs created by both urban, geography, size (number of people who came for UI),
 
 ```{r Pull_Pairs}
 #----ORIGINAL CODE FOR RANDOMIZATION------
-pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv" 
+##pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv" 
+pairfilepath <- "Data/Oregon_Pairs_14-Field-Offices_20160111.csv" 
 pairs2 <- read.csv(pairfilepath, row.names = 1)
 pairs2 <- pairs2[order(pairs2$pair), ] #ensure that all pairs are next to each other
 #Random generation of uniform distribution x14, one number per field office
@@ -268,18 +287,79 @@ for(i in 1:7)
 
 ```
 
+Save analysis file. Only lose one person here.
+
+```{r}
+or.dfb$fo <- as.factor(or.dfb$`277.Field.Office`)
+or.dfb <- or.dfb[which(!is.na(or.dfb$PEP.Unique.ID)), ]
+
+save(or.dfb,file="Data/or.dfb.rda")
+```
+
+These are the first set of people who entered the program: people who entered the 18th week of 2016 or prior. Because some of the people, who entered late, didn't have time to show actual outcomes. Assess balance here.
+
+```{r}
+#This analysis is to see what the impact is when there is more time for follow-up
+Hmisc::describe(as.numeric(or.dfb$BYE))
+or.df.LT <- or.dfb[or.dfb$BYE<=201718,]# longer term follow-up group
+or.df.LT$plans <- as.numeric(or.df.LT$`#.of.PEPP.Plans`)
+or.df.LT.omit <- or.dfb.omit2[or.dfb.omit2$BYE<=201718, ]
+```
+
+## Outcomes
+
+ - `welcome` welcome meeting -- 
+
+ - `uiexit` -- stop making claims fro 3 weeks in a row before exhausting
+
+ - employment (employed.pair.delta )
+
+ - wages
+
+ - amount of time to exit (time.to.exit) --- survival analysis
+
+## Employment Center Level analysis
+
+Aggregate the data by field office and see if there is a difference as a simple linear model.
+
+```{r Merge_Data2.0}
+pairs2$uiexit <- 0
+pairs2$emp <- 0
+for(i in 1:14)
+{
+	pairs2[i, "uiexit"] <- mean(or.df.LT[or.df.LT$fo==pairs2[i, "fo.num"], "uiexit"], na.rm = TRUE)
+	pairs2[i, "emp"] <- mean(or.df.LT[or.df.LT$fo==pairs2[i, "fo.num"], "employed"], na.rm = TRUE)
+}
+
+summary(lm(uiexit ~ treat, data = pairs2))
+summary(lm(emp ~ treat, data = pairs2))
+```
+
+
+
+```{r}
+
+
+
+```
+
+
+## Covariance Adjustment
+
+## Multiple Outcomes: NPC
+
+```{r}
+library(npc)
+
+```
+
+---------
+
 #Main Effects
 Now run the analysis to see if there is a treatment effect clustering by office
 
 ```{r Main_Effects}
-
 library(nlme)
-library(lmtest)
-library(sandwich)
-library(car)
-or.dfb$fo <- as.factor(or.dfb$`277.Field.Office`)
-or.dfb <- or.dfb[which(!is.na(or.dfb$PEP.Unique.ID)), ]
-
 #STEP 3: run main model regressed on treatment and controlling for office cluster
 
 #Question 1: Did the insert result in more completed Welcomes?
@@ -333,11 +413,6 @@ m.exit.plans.tot3 <- lme(uiexit.pair.delta ~ treat*plans + BYE +  Worker.Profile
 summary(m.exit.plans.tot3)
 
 #----Only Individuals w/ BYE of 201718 or less [25th percentile]----
-#This analysis is to see what the impact is when there is more time for follow-up
-Hmisc::describe(as.numeric(or.dfb$BYE))
-or.df.LT <- or.dfb[or.dfb$BYE<=201718,]#longer term follow-up group
-or.df.LT$plans <- as.numeric(or.df.LT$`#.of.PEPP.Plans`)
-or.df.LT.omit <- or.dfb.omit2[or.dfb.omit2$BYE<=201718, ]
 
 m.exit.itt1.LT <- lme(uiexit ~ treat,
 		      random = ~1 | fo,
@@ -445,23 +520,6 @@ row2 <- ds.confidence.table(m.employed.itt1b, "Employed_Pair_Centered")
 
 knitr::kable(rbind(row1, row2))
 
-
-```
-
-
-Then aggregate the data by field office and see if there is a difference as a simple linear model.
-
-```{r Merge_Data2.0}
-pairs2$uiexit <- 0
-pairs2$emp <- 0
-for(i in 1:14)
-{
-	pairs2[i, "uiexit"] <- mean(or.df.LT[or.df.LT$fo==pairs2[i, "fo.num"], "uiexit"], na.rm = TRUE)
-	pairs2[i, "emp"] <- mean(or.df.LT[or.df.LT$fo==pairs2[i, "fo.num"], "employed"], na.rm = TRUE)
-}
-
-summary(lm(uiexit ~ treat, data = pairs2))
-summary(lm(emp ~ treat, data = pairs2))
 
 ```
 

@@ -41,7 +41,7 @@ Pepp message -- message number
 
 ```{r Data_Import}
 library("openxlsx")
-library("excel.link")
+## library("excel.link")
 ## library("RDCOMClient")
 ## setwd("~/SBST/DOL/UI Oregon/Analysis/OR_Analysis")
 
@@ -79,12 +79,11 @@ dim(or.df.TOTAL)
 stopifnot(nrow(or.df.TOTAL)==length(unique(or.df.TOTAL$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
 
 
-require(Hmisc)
-
 ```
 
 
 ```{r Recode_Data}
+library(Hmisc)
 #Set class for variables
 or.df.TOTAL$Worker.Profile.Score <- as.numeric(or.df.TOTAL$Worker.Profile.Score)
 or.df.TOTAL$Education.Level <- ordered(or.df.TOTAL$Education.Level,
@@ -117,6 +116,7 @@ or.df.TOTAL$claim.date <-  as.Date(or.df.TOTAL$Initial.Claim.Entered.Date, origi
 Save the file
 
 ```{r}
+save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,file="Data/monthlyordat.rda")
 save(or.df.TOTAL, file="Data/or.df.TOTAL.rda")
 
 ```
