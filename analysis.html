@@ -608,6 +608,7 @@ theITTS</code></pre>
 <p>Now test the hypothesis of no effects. Because the sample size is so small, we use a randomization-based approach.</p>
 <pre class="r"><code>## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
 library(coin)</code></pre>
+<pre><code>## Loading required package: methods</code></pre>
 <pre><code>## Loading required package: survival</code></pre>
 <pre class="r"><code>wrkdat$treatF &lt;- factor(wrkdat$treat,levels=c(&quot;1&quot;,&quot;0&quot;))
 set.seed(20161102)
@@ -660,6 +661,21 @@ theps</code></pre>
 ## time.to.exitMD  5.297039e-01 0.8460
 ## plansMD         5.694926e-01 0.0170
 ## wagesMD         5.040047e+02 0.4226</code></pre>
+</div>
+<div id="test-the-null-of-no-effects-for-any-outcome" class="section level1">
+<h1>Test the null of no effects for any outcome</h1>
+<p>Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student’s T test statistic.</p>
+<pre class="r"><code>library(NPC)
+npcresults &lt;- NPC(wrkdat,tr.var=&quot;treat&quot;,tr.label=&quot;1&quot;,y.vars=paste(outcomes,&quot;_mean&quot;,sep=&quot;&quot;),block.var=&quot;pair&quot;,alternative=&quot;two.sided&quot;,return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)</code></pre>
+<pre><code>## 
+## Number of observations deleted due to missingness: 0</code></pre>
+<pre><code>## 'nperm' &gt;= set of all permutations: complete enumeration.</code></pre>
+<pre><code>## Set of permutations &lt; 'minperm'. Generating entire set.</code></pre>
+<pre class="r"><code>npcresults$p.values</code></pre>
+<pre><code>##      welcome_mean       uiexit_mean     employed_mean time.to.exit_mean 
+##          0.968750          0.906250          0.015625          0.843750 
+##        plans_mean        wages_mean               NPC 
+##          0.015625          0.421875          0.093750</code></pre>
 </div>
 
 
