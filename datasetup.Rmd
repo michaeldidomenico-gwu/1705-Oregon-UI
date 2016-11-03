@@ -25,7 +25,7 @@ If Exited Date Claim Ended -- date that those three weeks started. what was firs
 Claim Restarted -- in the ??week?? right before the data pull
 Line Flag 45 Date -- If you have caught in a fraudelent claim (so, an indicator that they are reemployed).
 Employed Flag -- Is an undercount. Based on reports of wages paid from employers.
-(Anyone earning money from an employer not their original employer...)
+(Anyone earning money from an employer not their original employer in a subsequent quarter)
 Quarter of Wages --- the first quarter reported, were reported from those Employed (a 5 month delay in the wage file)
 WF0.Zip.Code --- perhaps zip code of the home of the person
 Email Flag --- do they have an email on file.
