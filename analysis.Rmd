@@ -64,7 +64,10 @@ load("Data/monthlyordat.rda") ## Contains the month by month data
 
 ```{r Welcomes_by_Office, echo=FALSE}
 
-#Create a table showing the number of observations by month for each office
+#Create a table showing the number of welcome meetings by month for each office
+#An important NOTE that welcome meetings are not equivalent to observations
+#There can be someone that applied for UI and in the sample but has not done their welcome
+#If this is the case then they have not received a payment, b/c the welcome is required
 offices <- c(unique(or.df.TOTAL$'277.Field.Office'))[1:14]
 months <- c('mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep')
 desc.table.1 <- matrix(nrow = 14, ncol = 7,
@@ -197,12 +200,12 @@ covered by the data pull included:
 
  - `welcome` Whether the person had a welcome meeting
  - `uiexit` Whether the person stopped making unemployement claims for 3 weeks in a row.
- - `employed` Whether the person reported finding a job.
- - `time.to.exit` The number of ?days? between making the first claim and exiting the program.
+ - `employed` Whether a different company reports wages for the person in a quarter after the quarter they applied for UI
+ - `time.to.exit` The number of days between making the first claim and exiting the program.
  - `plans` Number of action plans uploaded by an individual in the program
  - `wages` The wages earned by the person (?average? ?weekly?)
 
-??Why is time.to.exit negative sometimes?
+??Why is time.to.exit negative sometimes? (DS: What is the frequency of this? Are they only clustered at the very start of the trial? I could imagine this happening in the March group). And yes, the 'time.to.exit' should represent the number of days between the two dates.
 
 ```{r results=FALSE}
 outcomes <- c("welcome","uiexit","employed","time.to.exit","plans","wages")
@@ -220,6 +223,9 @@ officedat <- or.df.TOTAL %>% group_by(fo.num) %>% summarize_at(aggvars,.funs=fun
 officedf <- as.data.frame(officedat[,c("fo.num",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
 row.names(officedf)<-officedf$fo.num
 names(officedf)[names(officedf)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Can Mike double check tha the means per office are correct and can we report out a table of this? Just want to double check. :)
+#Also, is "wages_sum" the number of NAs for the wage outcome?
 ```
 
 
@@ -240,6 +246,8 @@ for(i in outcomes){
 	nm <- paste(i,"_mean",sep="")
 	wrkdat[,paste(i,"MD",sep="")]<- wrkdat[[nm]] - ave(wrkdat[[nm]],wrkdat$pair)
 }
+knitr::kable(wrkdat) #If this table is too big it could be broken into pieces
+#This looks right to me, but I don't 100% follow the coding. Can Mike double check the pair centering?
 
 
 ```
