@@ -200,7 +200,7 @@ covered by the data pull included:
 
  - `welcome` Whether the person had a welcome meeting
  - `uiexit` Whether the person stopped making unemployement claims for 3 weeks in a row.
- - `employed` Whether a difference company reports wages for the person in a quarter after the quarter they applied for UI
+ - `employed` Whether a different company reports wages for the person in a quarter after the quarter they applied for UI
  - `time.to.exit` The number of ?days? between making the first claim and exiting the program.
  - `plans` Number of action plans uploaded by an individual in the program
  - `wages` The wages earned by the person (?average? ?weekly?)
