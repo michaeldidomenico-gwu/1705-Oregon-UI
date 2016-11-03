@@ -608,7 +608,6 @@ theITTS</code></pre>
 <p>Now test the hypothesis of no effects. Because the sample size is so small, we use a randomization-based approach.</p>
 <pre class="r"><code>## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
 library(coin)</code></pre>
-<pre><code>## Loading required package: methods</code></pre>
 <pre><code>## Loading required package: survival</code></pre>
 <pre class="r"><code>wrkdat$treatF &lt;- factor(wrkdat$treat,levels=c(&quot;1&quot;,&quot;0&quot;))
 set.seed(20161102)

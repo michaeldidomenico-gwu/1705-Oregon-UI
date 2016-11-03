@@ -233,3 +233,14 @@ Some results
 cbind(theITTS,theps)
 ```
 
+# Test the null of no effects for any outcome
+
+Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
+
+```{r}
+library(NPC)
+npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults$p.values
+```
+
+
