@@ -2,23 +2,63 @@
 title: "Prelim Analysis/Data Inspection"
 author: "Daniel Shephard, Jake Bowers, Michael DiDomenico"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
-output: html_document
+output:
+  html_document:
+      graphics: yes
+      fig_caption: yes
+      fig_height: 4
+      fig_width: 4
 ---
 
 
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+require(knitr)
+opts_chunk$set(tidy=FALSE,     # display code as typed
+	       size="small",    # slightly smaller font for code
+	       echo=FALSE,
+	       results='markup',
+	       strip.white=TRUE,
+	       ## fig.path='figs/fig',
+	       cache=FALSE,
+	       highlight=TRUE,
+	       width.cutoff=132,
+	       size='footnotesize',
+	       out.width='.9\\textwidth',
+	       message=FALSE,
+	       comment=NA)
+
+options(width=132,scipen=8,digits=4)
+```
+
+
+# Overview of the Project
+
+
+## Goal:
+
+Accelerate finding employment and reduce time on unemployment insurance among unemployment insurance clients in Oregon. To test behaviorally informed changes that can be scaled up to other states and incorporated into DOL guidance.
+
 This file executes the analysis of the experiment. It relies on files produced by the `datasetup.Rmd` file.
 
-```{r}
+```{r loadlibs}
 library(lmtest)
 library(sandwich)
 library(car)
+library(NPC)
+library(RItools)
+library(coin)
+library(dplyr)
 ```
 
-These two are produced by the `datasetup.Rmd` file.
+The two working data files are produced by the `datasetup.Rmd` file.
 
 ```{r}
 load("Data/or.df.TOTAL.rda")
-load("Data/monthlyordat.rda")
+load("Data/monthlyordat.rda") ## Contains the month by month data
 ```
 
 
@@ -83,13 +123,15 @@ knitr::kable(desc.table.1)
 ```
 
 
-# Pair Offices
+# The Experiment:
 
-Pairs were created by both urban, geography, size (number of people who came
-for UI), and quality of staff (judgement of the management in Oregon). Pairs
-provided by the management of the Oregon State program.
+The experiment randomly assigned the new set of procedures to 7 out of the 14
+offices after first grouping the offices into pairs.  Pairs were created by
+both urban, geography, size (number of people who came for UI), and quality of
+staff (judgement of the management in Oregon). Pairs provided by the management
+of the Oregon State program.
 
-```{r Pull_Pairs}
+```{r Pull_Pairs, results='hide'}
 #----ORIGINAL CODE FOR RANDOMIZATION------
 ##pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv" 
 pairfilepath <- "Data/Oregon_Pairs_14-Field-Offices_20160111.csv" 
@@ -139,16 +181,30 @@ samp.m1 <- (lm(ui.wks ~ treat, data=pairs2)) #original scores
 samp.m2 <- (lm(tot ~ treat, data=pairs2)) #original scores
 summary(samp.m1)
 summary(samp.m2)
+```
+
+```{r pairstable}
 #Write out the new dataset with treatment allocation
 #The number of welcomes and average weeks on UI is from 2015 data (Pre Intervention)
 knitr::kable(pairs2[order(pairs2$pair, pairs2$treat), c(1:2, 14, 9, 12, 10)]) #Order by pairs, with control pair office first
 
 ```
 
-**Outcomes**
+### Outcomes
 
+The overall outcomes collected at the individual level within the period
+covered by the data pull included:
 
-```{r}
+ - `welcome` Whether the person had a welcome meeting
+ - `uiexit` Whether the person stopped making unemployement claims for 3 weeks in a row.
+ - `employed` Whether the person reported finding a job.
+ - `time.to.exit` The number of ?days? between making the first claim and exiting the program.
+ - `plans` Number of action plans uploaded by an individual in the program
+ - `wages` The wages earned by the person (?average? ?weekly?)
+
+??Why is time.to.exit negative sometimes?
+
+```{r results=FALSE}
 outcomes <- c("welcome","uiexit","employed","time.to.exit","plans","wages")
 summary(or.df.TOTAL[,outcomes])
 aggvars <- c("insert",outcomes)
@@ -156,27 +212,27 @@ aggvars <- c("insert",outcomes)
 
 ## Employment Center Level analysis
 
+Because the intervention was randomized at the level of the employment office, we compare outcomes at that level: did offices in the new program display outcomes that differed from the offices operating under the status quo program?
 
 ```{r}
 ## This next creates more columns than I would like
-library(dplyr)
 officedat <- or.df.TOTAL %>% group_by(fo.num) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
 officedf <- as.data.frame(officedat[,c("fo.num",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
 row.names(officedf)<-officedf$fo.num
 names(officedf)[names(officedf)==c("wages_sum","insert_n")] <- c("missingwage","N")
 ```
 
-Add treatment assignment info
 
 ```{r}
+## Add treatment assignment info
 officedf$fo.num <- as.numeric(officedf$fo.num)
 wrkdat <- inner_join(officedf,pairs2,by="fo.num")
 wrkdat <- wrkdat[order(wrkdat$pair,wrkdat$treat),]
 ```
 
-Pair-mean center to handle the pairing:
 
 ```{r}
+## Pair-mean center to handle the pairing:
 
 wrkdat$treatMD <- with(wrkdat,treat - ave(treat,pair))
 for(i in outcomes){
@@ -190,7 +246,7 @@ for(i in outcomes){
 
 # Office Level Effects
 
-```{r}
+```{r estimates, results='hide'}
 ## First, just show two equivalent ways to get the ITT
 welcomeATEa <- lm(welcome_mean~treat+pair,data=wrkdat)
 welcomeATE <- lm(welcomeMD~treatMD,data=wrkdat)
@@ -204,18 +260,15 @@ theITTS <- sapply(aggoutcomes,function(v){
 theITTS
 ```
 
-Now test the hypothesis of no effects. Because the sample size is so small, we use a randomization-based approach.
 
-```{r}
+```{r tests, results='hide'}
 ## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
-library(coin)
 wrkdat$treatF <- factor(wrkdat$treat,levels=c("1","0"))
 set.seed(20161102)
 welcomeTest <- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat, distribution=approximate(B=5000))
 welcomeTest
 
 ## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
-library(RItools)
 xb1<-xBalance(treat ~ welcome_mean,strata=list(pair=~pair),data=wrkdat,report="all")
 xb1$results
 
@@ -227,7 +280,8 @@ theps <- sapply(aggoutcomes,function(v){
 theps
 ```
 
-Some results
+
+We present differences of means below --- they are an unbiased esimtator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests.Because the sample size is so small, we use a randomization-based approach.
 
 ```{r}
 cbind(theITTS,theps)
@@ -238,7 +292,6 @@ cbind(theITTS,theps)
 Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
 
 ```{r}
-library(NPC)
 npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
 npcresults$p.values
 ```

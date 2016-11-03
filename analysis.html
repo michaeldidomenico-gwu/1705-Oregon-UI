@@ -11,7 +11,7 @@
 
 <meta name="author" content="Daniel Shephard, Jake Bowers, Michael DiDomenico" />
 
-<meta name="date" content="2016-11-02" />
+<meta name="date" content="2016-11-03" />
 
 <title>Prelim Analysis/Data Inspection</title>
 
@@ -119,28 +119,22 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Prelim Analysis/Data Inspection</h1>
 <h4 class="author"><em>Daniel Shephard, Jake Bowers, Michael DiDomenico</em></h4>
-<h4 class="date"><em>November 02, 2016</em></h4>
+<h4 class="date"><em>November 03, 2016</em></h4>
 
 </div>
 
 
+<div id="overview-of-the-project" class="section level1">
+<h1>Overview of the Project</h1>
+<div id="goal" class="section level2">
+<h2>Goal:</h2>
+<p>Accelerate finding employment and reduce time on unemployment insurance among unemployment insurance clients in Oregon. To test behaviorally informed changes that can be scaled up to other states and incorporated into DOL guidance.</p>
 <p>This file executes the analysis of the experiment. It relies on files produced by the <code>datasetup.Rmd</code> file.</p>
-<pre class="r"><code>library(lmtest)</code></pre>
-<pre><code>## Loading required package: zoo</code></pre>
-<pre><code>## 
-## Attaching package: 'zoo'</code></pre>
-<pre><code>## The following objects are masked from 'package:base':
-## 
-##     as.Date, as.Date.numeric</code></pre>
-<pre class="r"><code>library(sandwich)
-library(car)</code></pre>
-<p>These two are produced by the <code>datasetup.Rmd</code> file.</p>
-<pre class="r"><code>load(&quot;Data/or.df.TOTAL.rda&quot;)
-load(&quot;Data/monthlyordat.rda&quot;)</code></pre>
+<p>The two working data files are produced by the <code>datasetup.Rmd</code> file.</p>
+</div>
 <div id="table-of-welcome-conversations-by-field-office" class="section level2">
 <h2>Table of welcome conversations by field office</h2>
 <p>The following table shows the number of welcome conversations conducted at each of the field offices in each month. The first column has the field office labels.</p>
-<pre class="r"><code>knitr::kable(desc.table.1)</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -298,97 +292,10 @@ load(&quot;Data/monthlyordat.rda&quot;)</code></pre>
 </tbody>
 </table>
 </div>
-<div id="pair-offices" class="section level1">
-<h1>Pair Offices</h1>
-<p>Pairs were created by both urban, geography, size (number of people who came for UI), and quality of staff (judgement of the management in Oregon). Pairs provided by the management of the Oregon State program.</p>
-<pre class="r"><code>#----ORIGINAL CODE FOR RANDOMIZATION------
-##pairfilepath &lt;- &quot;C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv&quot; 
-pairfilepath &lt;- &quot;Data/Oregon_Pairs_14-Field-Offices_20160111.csv&quot; 
-pairs2 &lt;- read.csv(pairfilepath, row.names = 1)
-row.names(pairs2)&lt;-pairs2$fo.num
-pairs2 &lt;- pairs2[order(pairs2$pair), ] #ensure that all pairs are next to each other
-#Random generation of uniform distribution x14, one number per field office
-#The highest number in the pair is allocated to the treatment group
-pairs2$treat &lt;- 0
-set.seed(20160108) #note, ran once with 20150108, but changed to match date
-ran.no &lt;- runif(14)
-for (i in 1:7)
-{
-    if(ran.no[i*2] &gt; ran.no[(i*2)-1])
-    {
-        pairs2[i*2, &quot;treat&quot;] &lt;- 1
-    }
-    else
-    {
-        pairs2[i*2-1, &quot;treat&quot;] &lt;- 1
-    }
-
-}
-
-#Check the frequency of assignment with different seeds to ensure 50% chance
-#Run allocation logic used above through 1000 different seeds
-pair2 &lt;- NA
-pair2 &lt;- as.numeric(pair2)
-for (q in 1:1000) #run 1000 simulations of different seeds
-{
-    set.seed(20160107+q)
-    ran.no &lt;- runif(14)
-    for (i in 1:7) #for a set of 7 pairs with the current seed do the following
-    {
-        if(ran.no[i*2] &gt; ran.no[(i*2)-1]) #if the even number in the pair is greater than the odd number
-        {
-            pair2 &lt;- rbind(pair2, 1) #then give it a treatment value of 1
-        }
-        else
-        {
-            pair2 &lt;- rbind(pair2, 0) #else give the second in the pair a value of 0
-        }
-    }
-}
-treat.probability &lt;- mean(pair2, na.rm=TRUE)
-samp.m1 &lt;- (lm(ui.wks ~ treat, data=pairs2)) #original scores
-samp.m2 &lt;- (lm(tot ~ treat, data=pairs2)) #original scores
-summary(samp.m1)</code></pre>
-<pre><code>## 
-## Call:
-## lm(formula = ui.wks ~ treat, data = pairs2)
-## 
-## Residuals:
-##     Min      1Q  Median      3Q     Max 
-## -0.7400 -0.3725 -0.0550  0.3775  0.8900 
-## 
-## Coefficients:
-##             Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept)  15.9300     0.2019  78.902   &lt;2e-16 ***
-## treat        -0.2100     0.2855  -0.735    0.476    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 0.5342 on 12 degrees of freedom
-## Multiple R-squared:  0.04313,    Adjusted R-squared:  -0.0366 
-## F-statistic: 0.5409 on 1 and 12 DF,  p-value: 0.4762</code></pre>
-<pre class="r"><code>summary(samp.m2)</code></pre>
-<pre><code>## 
-## Call:
-## lm(formula = tot ~ treat, data = pairs2)
-## 
-## Residuals:
-##     Min      1Q  Median      3Q     Max 
-## -1215.6 -1039.1  -656.7  1114.1  2433.4 
-## 
-## Coefficients:
-##             Estimate Std. Error t value Pr(&gt;|t|)  
-## (Intercept)  1408.86     532.16   2.647   0.0213 *
-## treat         -39.29     752.59  -0.052   0.9592  
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 1408 on 12 degrees of freedom
-## Multiple R-squared:  0.000227,   Adjusted R-squared:  -0.08309 
-## F-statistic: 0.002725 on 1 and 12 DF,  p-value: 0.9592</code></pre>
-<pre class="r"><code>#Write out the new dataset with treatment allocation
-#The number of welcomes and average weeks on UI is from 2015 data (Pre Intervention)
-knitr::kable(pairs2[order(pairs2$pair, pairs2$treat), c(1:2, 14, 9, 12, 10)]) #Order by pairs, with control pair office first</code></pre>
+</div>
+<div id="the-experiment" class="section level1">
+<h1>The Experiment:</h1>
+<p>The experiment randomly assigned the new set of procedures to 7 out of the 14 offices after first grouping the offices into pairs. Pairs were created by both urban, geography, size (number of people who came for UI), and quality of staff (judgement of the management in Oregon). Pairs provided by the management of the Oregon State program.</p>
 <table>
 <thead>
 <tr class="header">
@@ -530,152 +437,50 @@ knitr::kable(pairs2[order(pairs2$pair, pairs2$treat), c(1:2, 14, 9, 12, 10)]) #O
 </tr>
 </tbody>
 </table>
-<p><strong>Outcomes</strong></p>
-<pre class="r"><code>outcomes &lt;- c(&quot;welcome&quot;,&quot;uiexit&quot;,&quot;employed&quot;,&quot;time.to.exit&quot;,&quot;plans&quot;,&quot;wages&quot;)
-summary(or.df.TOTAL[,outcomes])</code></pre>
-<pre><code>##     welcome           uiexit          employed        time.to.exit  
-##  Min.   :0.0000   Min.   :0.0000   Min.   :0.00000   Min.   :-26.0  
-##  1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.00000   1st Qu.: 40.0  
-##  Median :1.0000   Median :0.0000   Median :0.00000   Median :187.0  
-##  Mean   :0.6016   Mean   :0.4142   Mean   :0.01505   Mean   :125.9  
-##  3rd Qu.:1.0000   3rd Qu.:1.0000   3rd Qu.:0.00000   3rd Qu.:187.0  
-##  Max.   :1.0000   Max.   :1.0000   Max.   :1.00000   Max.   :187.0  
-##                                                                     
-##      plans            wages      
-##  Min.   :0.0000   Min.   :   19  
-##  1st Qu.:0.0000   1st Qu.: 1124  
-##  Median :0.0000   Median : 2678  
-##  Mean   :0.2842   Mean   : 3504  
-##  3rd Qu.:1.0000   3rd Qu.: 4781  
-##  Max.   :3.0000   Max.   :22492  
-##                   NA's   :22829</code></pre>
-<pre class="r"><code>aggvars &lt;- c(&quot;insert&quot;,outcomes)</code></pre>
+<div id="outcomes" class="section level3">
+<h3>Outcomes</h3>
+<p>The overall outcomes collected at the individual level within the period covered by the data pull included:</p>
+<ul>
+<li><code>welcome</code> Whether the person had a welcome meeting</li>
+<li><code>uiexit</code> Whether the person stopped making unemployement claims for 3 weeks in a row.</li>
+<li><code>employed</code> Whether the person reported finding a job.</li>
+<li><code>time.to.exit</code> The number of ?days? between making the first claim and exiting the program.</li>
+<li><code>plans</code> Number of action plans uploaded by an individual in the program</li>
+<li><code>wages</code> The wages earned by the person (?average? ?weekly?)</li>
+</ul>
+<p>??Why is time.to.exit negative sometimes?</p>
+<pre><code>    welcome          uiexit         employed       time.to.exit     plans           wages      
+ Min.   :0.000   Min.   :0.000   Min.   :0.0000   Min.   :-26   Min.   :0.000   Min.   :   19  
+ 1st Qu.:0.000   1st Qu.:0.000   1st Qu.:0.0000   1st Qu.: 40   1st Qu.:0.000   1st Qu.: 1124  
+ Median :1.000   Median :0.000   Median :0.0000   Median :187   Median :0.000   Median : 2678  
+ Mean   :0.602   Mean   :0.414   Mean   :0.0151   Mean   :126   Mean   :0.284   Mean   : 3504  
+ 3rd Qu.:1.000   3rd Qu.:1.000   3rd Qu.:0.0000   3rd Qu.:187   3rd Qu.:1.000   3rd Qu.: 4781  
+ Max.   :1.000   Max.   :1.000   Max.   :1.0000   Max.   :187   Max.   :3.000   Max.   :22492  
+                                                                                NA's   :22829  </code></pre>
+</div>
 <div id="employment-center-level-analysis" class="section level2">
 <h2>Employment Center Level analysis</h2>
-<pre class="r"><code>## This next creates more columns than I would like
-library(dplyr)</code></pre>
-<pre><code>## 
-## Attaching package: 'dplyr'</code></pre>
-<pre><code>## The following object is masked from 'package:car':
-## 
-##     recode</code></pre>
-<pre><code>## The following objects are masked from 'package:stats':
-## 
-##     filter, lag</code></pre>
-<pre><code>## The following objects are masked from 'package:base':
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>officedat &lt;- or.df.TOTAL %&gt;% group_by(fo.num) %&gt;% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
-officedf &lt;- as.data.frame(officedat[,c(&quot;fo.num&quot;,grep(&quot;mean&quot;,names(officedat),value=TRUE),&quot;wages_sum&quot;,&quot;insert_n&quot;)])
-row.names(officedf)&lt;-officedf$fo.num
-names(officedf)[names(officedf)==c(&quot;wages_sum&quot;,&quot;insert_n&quot;)] &lt;- c(&quot;missingwage&quot;,&quot;N&quot;)</code></pre>
-<p>Add treatment assignment info</p>
-<pre class="r"><code>officedf$fo.num &lt;- as.numeric(officedf$fo.num)
-wrkdat &lt;- inner_join(officedf,pairs2,by=&quot;fo.num&quot;)
-wrkdat &lt;- wrkdat[order(wrkdat$pair,wrkdat$treat),]</code></pre>
-<p>Pair-mean center to handle the pairing:</p>
-<pre class="r"><code>wrkdat$treatMD &lt;- with(wrkdat,treat - ave(treat,pair))
-for(i in outcomes){
-    message(i)
-    nm &lt;- paste(i,&quot;_mean&quot;,sep=&quot;&quot;)
-    wrkdat[,paste(i,&quot;MD&quot;,sep=&quot;&quot;)]&lt;- wrkdat[[nm]] - ave(wrkdat[[nm]],wrkdat$pair)
-}</code></pre>
-<pre><code>## welcome</code></pre>
-<pre><code>## uiexit</code></pre>
-<pre><code>## employed</code></pre>
-<pre><code>## time.to.exit</code></pre>
-<pre><code>## plans</code></pre>
-<pre><code>## wages</code></pre>
+<p>Because the intervention was randomized at the level of the employment office, we compare outcomes at that level: did offices in the new program display outcomes that differed from the offices operating under the status quo program?</p>
 </div>
 </div>
 <div id="office-level-effects" class="section level1">
 <h1>Office Level Effects</h1>
-<pre class="r"><code>## First, just show two equivalent ways to get the ITT
-welcomeATEa &lt;- lm(welcome_mean~treat+pair,data=wrkdat)
-welcomeATE &lt;- lm(welcomeMD~treatMD,data=wrkdat)
-stopifnot(all.equal(coef(welcomeATEa)[[2]],coef(welcomeATE)[[2]]))
-
-## Next calc the diff of means for all outcomes
-aggoutcomes &lt;- paste(outcomes,&quot;MD&quot;,sep=&quot;&quot;)
-theITTS &lt;- sapply(aggoutcomes,function(v){
-              coef(lm(reformulate(&quot;treatMD&quot;,response=v),data=wrkdat))[[2]]
-})
-theITTS</code></pre>
-<pre><code>##      welcomeMD       uiexitMD     employedMD time.to.exitMD        plansMD 
-##   7.364342e-04  -2.764910e-03   4.048391e-03   5.297039e-01   5.694926e-01 
-##        wagesMD 
-##   5.040047e+02</code></pre>
-<p>Now test the hypothesis of no effects. Because the sample size is so small, we use a randomization-based approach.</p>
-<pre class="r"><code>## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
-library(coin)</code></pre>
-<pre><code>## Loading required package: methods</code></pre>
-<pre><code>## Loading required package: survival</code></pre>
-<pre class="r"><code>wrkdat$treatF &lt;- factor(wrkdat$treat,levels=c(&quot;1&quot;,&quot;0&quot;))
-set.seed(20161102)
-welcomeTest &lt;- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat, distribution=approximate(B=5000))
-welcomeTest</code></pre>
-<pre><code>## 
-##  Approximative Two-Sample Fisher-Pitman Permutation Test
-## 
-## data:  welcome_mean by treatF (1, 0) 
-##   stratified by pair
-## Z = 0.017873, p-value = 0.968
-## alternative hypothesis: true mu is not equal to 0</code></pre>
-<pre class="r"><code>## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
-library(RItools)</code></pre>
-<pre><code>## Loading required package: SparseM</code></pre>
-<pre><code>## 
-## Attaching package: 'SparseM'</code></pre>
-<pre><code>## The following object is masked from 'package:base':
-## 
-##     backsolve</code></pre>
-<pre class="r"><code>xb1&lt;-xBalance(treat ~ welcome_mean,strata=list(pair=~pair),data=wrkdat,report=&quot;all&quot;)
-xb1$results</code></pre>
-<pre><code>## , , strata = pair
-## 
-##               stat
-## vars             treat=0   treat=1     adj.diff adj.diff.null.sd
-##   welcome_mean 0.5931232 0.5938596 0.0007364342         0.041204
-##               stat
-## vars             std.diff          z         p
-##   welcome_mean 0.01056616 0.01787288 0.9857403
-## 
-## attr(,&quot;originals&quot;)
-## [1] &quot;welcome_mean&quot;</code></pre>
-<pre class="r"><code>## Now do it for all
-theps &lt;- sapply(aggoutcomes,function(v){
-             results &lt;- oneway_test(reformulate(&quot;treatF | pair &quot;,response=v),data=wrkdat,distribution=approximate(B=5000))
-             return(pvalue(results))
-})
-theps</code></pre>
-<pre><code>##      welcomeMD       uiexitMD     employedMD time.to.exitMD        plansMD 
-##         0.9664         0.8982         0.0178         0.8460         0.0170 
-##        wagesMD 
-##         0.4226</code></pre>
-<p>Some results</p>
-<pre class="r"><code>cbind(theITTS,theps)</code></pre>
-<pre><code>##                      theITTS  theps
-## welcomeMD       7.364342e-04 0.9664
-## uiexitMD       -2.764910e-03 0.8982
-## employedMD      4.048391e-03 0.0178
-## time.to.exitMD  5.297039e-01 0.8460
-## plansMD         5.694926e-01 0.0170
-## wagesMD         5.040047e+02 0.4226</code></pre>
+<p>We present differences of means below — they are an unbiased esimtator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests.Because the sample size is so small, we use a randomization-based approach.</p>
+<pre><code>                   theITTS  theps
+welcomeMD        0.0007364 0.9664
+uiexitMD        -0.0027649 0.8982
+employedMD       0.0040484 0.0178
+time.to.exitMD   0.5297039 0.8460
+plansMD          0.5694926 0.0170
+wagesMD        504.0047166 0.4226</code></pre>
 </div>
 <div id="test-the-null-of-no-effects-for-any-outcome" class="section level1">
 <h1>Test the null of no effects for any outcome</h1>
 <p>Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student’s T test statistic.</p>
-<pre class="r"><code>library(NPC)
-npcresults &lt;- NPC(wrkdat,tr.var=&quot;treat&quot;,tr.label=&quot;1&quot;,y.vars=paste(outcomes,&quot;_mean&quot;,sep=&quot;&quot;),block.var=&quot;pair&quot;,alternative=&quot;two.sided&quot;,return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)</code></pre>
-<pre><code>## 
-## Number of observations deleted due to missingness: 0</code></pre>
-<pre><code>## 'nperm' &gt;= set of all permutations: complete enumeration.</code></pre>
-<pre><code>## Set of permutations &lt; 'minperm'. Generating entire set.</code></pre>
-<pre class="r"><code>npcresults$p.values</code></pre>
-<pre><code>##      welcome_mean       uiexit_mean     employed_mean time.to.exit_mean 
-##          0.968750          0.906250          0.015625          0.843750 
-##        plans_mean        wages_mean               NPC 
-##          0.015625          0.421875          0.093750</code></pre>
+<pre><code>
+Number of observations deleted due to missingness: 0 </code></pre>
+<pre><code>     welcome_mean       uiexit_mean     employed_mean time.to.exit_mean        plans_mean        wages_mean               NPC 
+          0.96875           0.90625           0.01562           0.84375           0.01562           0.42188           0.09375 </code></pre>
 </div>
 
 
