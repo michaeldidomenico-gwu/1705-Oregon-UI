@@ -219,21 +219,24 @@ Because the intervention was randomized at the level of the employment office, w
 
 ```{r}
 ## This next creates more columns than I would like
-officedat <- or.df.TOTAL %>% group_by(fo.num) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
-officedf <- as.data.frame(officedat[,c("fo.num",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
-row.names(officedf)<-officedf$fo.num
+officedat <- or.df.TOTAL %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf <- as.data.frame(officedat[,c("fonum",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf)<-officedf$fonum
 names(officedf)[names(officedf)==c("wages_sum","insert_n")] <- c("missingwage","N")
+## wages_sum is the number of people with missing wages data
 
-## Can Mike double check tha the means per office are correct and can we report out a table of this? Just want to double check. :)
-#Also, is "wages_sum" the number of NAs for the wage outcome?
+## Check that the calculation of the mean within office is correct by looking at one office
+stopifnot(all.equal(with(or.df.TOTAL,mean(welcome[fonum=="210"])),officedf["210","welcome_mean"]))
 ```
 
 
-```{r}
+```{r mergeontreatment}
 ## Add treatment assignment info
-officedf$fo.num <- as.numeric(officedf$fo.num)
-wrkdat <- inner_join(officedf,pairs2,by="fo.num")
+officedf$fonum <- as.numeric(officedf$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat <- inner_join(officedf,pairs2,by="fonum")
 wrkdat <- wrkdat[order(wrkdat$pair,wrkdat$treat),]
+row.names(wrkdat) <- as.character(wrkdat$fonum)
 ```
 
 
@@ -247,9 +250,11 @@ for(i in outcomes){
 	wrkdat[,paste(i,"MD",sep="")]<- wrkdat[[nm]] - ave(wrkdat[[nm]],wrkdat$pair)
 }
 knitr::kable(wrkdat) #If this table is too big it could be broken into pieces
-#This looks right to me, but I don't 100% follow the coding. Can Mike double check the pair centering?
 
-
+## Check the pair centering
+stopifnot(all.equal(wrkdat$welcomeMD[wrkdat$pair=="a"],
+		    with(wrkdat[wrkdat$pair=="a",], welcome_mean - mean(welcome_mean)) 
+		    ) )
 ```
 
 # Office Level Effects
@@ -304,4 +309,107 @@ npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mea
 npcresults$p.values
 ```
 
+# Effects on Those With More Time in the Program?
 
+One idea is that effects of the program might be smaller among those who have
+had little time in the program. So, we might inspect the effects among those
+who have been in the program longer (say, those with `BYE<=201718` (Benefits
+Year End Date of the 18th week of 2017).
+
+First, however, before we divide up the sample in this way, we should see if
+there are differential effects of treatment on BYE.
+
+```{r byextreat, results="markup"}
+## We are just looking for systematic relationships between BYE and treatment status, so it is ok to make this numeric.
+or.df.TOTAL$BYEN <- as.numeric(or.df.TOTAL$BYE)
+tmp <-  or.df.TOTAL %>% group_by(fonum) %>% summarise(bye_mean=mean(BYEN))
+wrkdat[as.character(tmp$fonum),"bye_mean"]<-tmp$bye_mean
+byeTest <- oneway_test(bye_mean~treatF | pair,data=wrkdat)
+byeTest
+with(wrkdat,c(mean(bye_mean[treat==1]),mean(bye_mean[treat==0])))
+```
+
+The preceding analysis does not suggest different BYE in the treatment and
+control groups. We now re-do the preceding analysis, but only for the subset of
+respondents who have spent the most time in the program.
+
+
+```{r agg2}
+## This next creates more columns than I would like
+officedat2 <- or.df.TOTAL[or.df.TOTAL$BYE<=201718,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf2 <- as.data.frame(officedat2[,c("fonum",grep("mean",names(officedat2),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf2)<-officedf2$fonum
+names(officedf2)[names(officedf2)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf2$fonum <- as.numeric(officedf2$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat2 <- inner_join(officedf2,pairs2,by="fonum")
+wrkdat2 <- wrkdat2[order(wrkdat2$pair,wrkdat2$treat),]
+row.names(wrkdat2) <- as.character(wrkdat2$fonum)
+```
+
+
+```{r}
+## Pair-mean center to handle the pairing:
+
+wrkdat2$treatMD <- with(wrkdat2,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat2[,paste(i,"MD",sep="")]<- wrkdat2[[nm]] - ave(wrkdat2[[nm]],wrkdat2$pair)
+}
+knitr::kable(wrkdat2) #If this table is too big it could be broken into pieces
+
+## Check the pair centering
+stopifnot(all.equal(wrkdat2$welcomeMD[wrkdat2$pair=="a"],
+		    with(wrkdat2[wrkdat2$pair=="a",], welcome_mean - mean(welcome_mean)) 
+		    ) )
+```
+
+
+
+```{r estimates2, results='hide'}
+## Next calc the diff of means for all outcomes
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat2))[[2]]
+})
+theITTS
+```
+
+
+```{r tests, results='hide'}
+## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
+wrkdat2$treatF <- factor(wrkdat2$treat,levels=c("1","0"))
+set.seed(20161102)
+welcomeTest <- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat2, distribution=approximate(B=5000))
+welcomeTest
+
+## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
+xb1<-xBalance(treat ~ welcome_mean,strata=list(pair=~pair),data=wrkdat2,report="all")
+xb1$results
+
+## Now do it for all
+theps <- sapply(aggoutcomes,function(v){
+			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat2,distribution=approximate(B=5000))
+			 return(pvalue(results))
+})
+theps
+```
+
+
+We present differences of means below --- they are an unbiased esimtator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests.Because the sample size is so small, we use a randomization-based approach.
+
+```{r}
+cbind(theITTS,theps)
+```
+
+# Test the null of no effects for any outcome
+
+Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
+
+```{r}
+npcresults <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults$p.values
+```

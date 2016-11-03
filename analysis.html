@@ -443,12 +443,12 @@ $(document).ready(function () {
 <ul>
 <li><code>welcome</code> Whether the person had a welcome meeting</li>
 <li><code>uiexit</code> Whether the person stopped making unemployement claims for 3 weeks in a row.</li>
-<li><code>employed</code> Whether the person reported finding a job.</li>
-<li><code>time.to.exit</code> The number of ?days? between making the first claim and exiting the program.</li>
+<li><code>employed</code> Whether a different company reports wages for the person in a quarter after the quarter they applied for UI</li>
+<li><code>time.to.exit</code> The number of days between making the first claim and exiting the program.</li>
 <li><code>plans</code> Number of action plans uploaded by an individual in the program</li>
 <li><code>wages</code> The wages earned by the person (?average? ?weekly?)</li>
 </ul>
-<p>??Why is time.to.exit negative sometimes?</p>
+<p>??Why is time.to.exit negative sometimes? (DS: What is the frequency of this? Are they only clustered at the very start of the trial? I could imagine this happening in the March group). And yes, the ‘time.to.exit’ should represent the number of days between the two dates.</p>
 <pre><code>    welcome          uiexit         employed       time.to.exit     plans           wages      
  Min.   :0.000   Min.   :0.000   Min.   :0.0000   Min.   :-26   Min.   :0.000   Min.   :   19  
  1st Qu.:0.000   1st Qu.:0.000   1st Qu.:0.0000   1st Qu.: 40   1st Qu.:0.000   1st Qu.: 1124  
@@ -461,6 +461,522 @@ $(document).ready(function () {
 <div id="employment-center-level-analysis" class="section level2">
 <h2>Employment Center Level analysis</h2>
 <p>Because the intervention was randomized at the level of the employment office, we compare outcomes at that level: did offices in the new program display outcomes that differed from the offices operating under the status quo program?</p>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th align="right">fonum</th>
+<th align="right">insert_mean</th>
+<th align="right">welcome_mean</th>
+<th align="right">uiexit_mean</th>
+<th align="right">employed_mean</th>
+<th align="right">time.to.exit_mean</th>
+<th align="right">plans_mean</th>
+<th align="right">wages_mean</th>
+<th align="right">missingwage</th>
+<th align="right">N</th>
+<th align="right">fo.num</th>
+<th align="left">fo.name.x</th>
+<th align="right">mar</th>
+<th align="right">apr</th>
+<th align="right">may</th>
+<th align="right">jun</th>
+<th align="right">jul</th>
+<th align="right">aug</th>
+<th align="right">tot</th>
+<th align="left">pair</th>
+<th align="left">fo.name.y</th>
+<th align="right">ui.wks</th>
+<th align="right">selected</th>
+<th align="right">treat</th>
+<th align="right">treatMD</th>
+<th align="right">welcomeMD</th>
+<th align="right">uiexitMD</th>
+<th align="right">employedMD</th>
+<th align="right">time.to.exitMD</th>
+<th align="right">plansMD</th>
+<th align="right">wagesMD</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>4</td>
+<td align="right">210</td>
+<td align="right">0.0000</td>
+<td align="right">0.6446</td>
+<td align="right">0.4405</td>
+<td align="right">0.0135</td>
+<td align="right">123.3</td>
+<td align="right">0.0013</td>
+<td align="right">3661</td>
+<td align="right">3758</td>
+<td align="right">3787</td>
+<td align="right">210</td>
+<td align="left">Salem</td>
+<td align="right">540</td>
+<td align="right">504</td>
+<td align="right">433</td>
+<td align="right">607</td>
+<td align="right">611</td>
+<td align="right">462</td>
+<td align="right">3157</td>
+<td align="left">a</td>
+<td align="left">SALEM</td>
+<td align="right">16.09</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">-0.5</td>
+<td align="right">0.0050</td>
+<td align="right">0.0204</td>
+<td align="right">-0.0012</td>
+<td align="right">-2.2125</td>
+<td align="right">-0.3065</td>
+<td align="right">414.0</td>
+</tr>
+<tr class="even">
+<td>7</td>
+<td align="right">310</td>
+<td align="right">0.9405</td>
+<td align="right">0.6346</td>
+<td align="right">0.3996</td>
+<td align="right">0.0158</td>
+<td align="right">127.7</td>
+<td align="right">0.6144</td>
+<td align="right">2833</td>
+<td align="right">4248</td>
+<td align="right">4302</td>
+<td align="right">310</td>
+<td align="left">Eugene</td>
+<td align="right">619</td>
+<td align="right">627</td>
+<td align="right">538</td>
+<td align="right">647</td>
+<td align="right">765</td>
+<td align="right">607</td>
+<td align="right">3803</td>
+<td align="left">a</td>
+<td align="left">EUGENE</td>
+<td align="right">15.82</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">0.5</td>
+<td align="right">-0.0050</td>
+<td align="right">-0.0204</td>
+<td align="right">0.0012</td>
+<td align="right">2.2125</td>
+<td align="right">0.3065</td>
+<td align="right">-414.0</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td align="right">820</td>
+<td align="right">0.0000</td>
+<td align="right">0.6884</td>
+<td align="right">0.4504</td>
+<td align="right">0.0085</td>
+<td align="right">119.6</td>
+<td align="right">0.0085</td>
+<td align="right">1096</td>
+<td align="right">351</td>
+<td align="right">353</td>
+<td align="right">820</td>
+<td align="left">La Grande</td>
+<td align="right">74</td>
+<td align="right">57</td>
+<td align="right">45</td>
+<td align="right">52</td>
+<td align="right">62</td>
+<td align="right">39</td>
+<td align="right">329</td>
+<td align="left">b</td>
+<td align="left">LA GRANDE</td>
+<td align="right">15.19</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">-0.5</td>
+<td align="right">0.0942</td>
+<td align="right">0.0266</td>
+<td align="right">-0.0026</td>
+<td align="right">-3.1746</td>
+<td align="right">-0.2594</td>
+<td align="right">-1379.5</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td align="right">920</td>
+<td align="right">0.9247</td>
+<td align="right">0.5000</td>
+<td align="right">0.3973</td>
+<td align="right">0.0137</td>
+<td align="right">125.9</td>
+<td align="right">0.5274</td>
+<td align="right">3855</td>
+<td align="right">144</td>
+<td align="right">146</td>
+<td align="right">920</td>
+<td align="left">Baker City</td>
+<td align="right">44</td>
+<td align="right">22</td>
+<td align="right">20</td>
+<td align="right">32</td>
+<td align="right">22</td>
+<td align="right">14</td>
+<td align="right">154</td>
+<td align="left">b</td>
+<td align="left">BAKER CIT</td>
+<td align="right">15.62</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0.5</td>
+<td align="right">-0.0942</td>
+<td align="right">-0.0266</td>
+<td align="right">0.0026</td>
+<td align="right">3.1746</td>
+<td align="right">0.2594</td>
+<td align="right">1379.5</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td align="right">250</td>
+<td align="right">0.0000</td>
+<td align="right">0.5814</td>
+<td align="right">0.4186</td>
+<td align="right">0.0136</td>
+<td align="right">123.5</td>
+<td align="right">0.0039</td>
+<td align="right">2260</td>
+<td align="right">512</td>
+<td align="right">516</td>
+<td align="right">250</td>
+<td align="left">Newport</td>
+<td align="right">65</td>
+<td align="right">61</td>
+<td align="right">39</td>
+<td align="right">60</td>
+<td align="right">58</td>
+<td align="right">44</td>
+<td align="right">327</td>
+<td align="left">c</td>
+<td align="left">NEWPORT</td>
+<td align="right">16.38</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">-0.5</td>
+<td align="right">-0.0060</td>
+<td align="right">0.0135</td>
+<td align="right">-0.0053</td>
+<td align="right">-1.5102</td>
+<td align="right">-0.2797</td>
+<td align="right">-677.6</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td align="right">150</td>
+<td align="right">0.9458</td>
+<td align="right">0.5934</td>
+<td align="right">0.3916</td>
+<td align="right">0.0241</td>
+<td align="right">126.5</td>
+<td align="right">0.5633</td>
+<td align="right">3615</td>
+<td align="right">328</td>
+<td align="right">332</td>
+<td align="right">150</td>
+<td align="left">Astoria</td>
+<td align="right">60</td>
+<td align="right">47</td>
+<td align="right">52</td>
+<td align="right">59</td>
+<td align="right">60</td>
+<td align="right">41</td>
+<td align="right">319</td>
+<td align="left">c</td>
+<td align="left">ASTORIA</td>
+<td align="right">15.01</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">0.5</td>
+<td align="right">0.0060</td>
+<td align="right">-0.0135</td>
+<td align="right">0.0053</td>
+<td align="right">1.5102</td>
+<td align="right">0.2797</td>
+<td align="right">677.6</td>
+</tr>
+<tr class="odd">
+<td>1</td>
+<td align="right">102</td>
+<td align="right">0.0000</td>
+<td align="right">0.5633</td>
+<td align="right">0.3952</td>
+<td align="right">0.0149</td>
+<td align="right">128.9</td>
+<td align="right">0.0069</td>
+<td align="right">3769</td>
+<td align="right">4190</td>
+<td align="right">4223</td>
+<td align="right">102</td>
+<td align="left">Gresham</td>
+<td align="right">637</td>
+<td align="right">650</td>
+<td align="right">552</td>
+<td align="right">620</td>
+<td align="right">640</td>
+<td align="right">516</td>
+<td align="right">3615</td>
+<td align="left">d</td>
+<td align="left">PORTLAND</td>
+<td align="right">16.64</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">-0.5</td>
+<td align="right">-0.0097</td>
+<td align="right">-0.0009</td>
+<td align="right">-0.0011</td>
+<td align="right">0.1213</td>
+<td align="right">-0.2586</td>
+<td align="right">-777.1</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td align="right">180</td>
+<td align="right">0.9443</td>
+<td align="right">0.5828</td>
+<td align="right">0.3969</td>
+<td align="right">0.0170</td>
+<td align="right">128.7</td>
+<td align="right">0.5240</td>
+<td align="right">5323</td>
+<td align="right">3606</td>
+<td align="right">3643</td>
+<td align="right">180</td>
+<td align="left">Oregon City</td>
+<td align="right">479</td>
+<td align="right">459</td>
+<td align="right">431</td>
+<td align="right">558</td>
+<td align="right">567</td>
+<td align="right">403</td>
+<td align="right">2897</td>
+<td align="left">d</td>
+<td align="left">OREGON CI</td>
+<td align="right">16.61</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">0.5</td>
+<td align="right">0.0097</td>
+<td align="right">0.0009</td>
+<td align="right">0.0011</td>
+<td align="right">-0.1213</td>
+<td align="right">0.2586</td>
+<td align="right">777.1</td>
+</tr>
+<tr class="odd">
+<td>6</td>
+<td align="right">270</td>
+<td align="right">0.0000</td>
+<td align="right">0.6477</td>
+<td align="right">0.4208</td>
+<td align="right">0.0117</td>
+<td align="right">124.5</td>
+<td align="right">0.0082</td>
+<td align="right">3812</td>
+<td align="right">1449</td>
+<td align="right">1459</td>
+<td align="right">270</td>
+<td align="left">Albany</td>
+<td align="right">206</td>
+<td align="right">208</td>
+<td align="right">152</td>
+<td align="right">221</td>
+<td align="right">242</td>
+<td align="right">254</td>
+<td align="right">1283</td>
+<td align="left">e</td>
+<td align="left">ALBANY</td>
+<td align="right">15.79</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">-0.5</td>
+<td align="right">0.0146</td>
+<td align="right">0.0089</td>
+<td align="right">-0.0001</td>
+<td align="right">-1.5816</td>
+<td align="right">-0.3234</td>
+<td align="right">878.5</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td align="right">320</td>
+<td align="right">0.9314</td>
+<td align="right">0.6185</td>
+<td align="right">0.4031</td>
+<td align="right">0.0119</td>
+<td align="right">127.6</td>
+<td align="right">0.6550</td>
+<td align="right">2055</td>
+<td align="right">1331</td>
+<td align="right">1342</td>
+<td align="right">320</td>
+<td align="left">Roseburg</td>
+<td align="right">185</td>
+<td align="right">186</td>
+<td align="right">155</td>
+<td align="right">188</td>
+<td align="right">249</td>
+<td align="right">246</td>
+<td align="right">1209</td>
+<td align="left">e</td>
+<td align="left">ROSEBURG</td>
+<td align="right">15.52</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0.5</td>
+<td align="right">-0.0146</td>
+<td align="right">-0.0089</td>
+<td align="right">0.0001</td>
+<td align="right">1.5816</td>
+<td align="right">0.3234</td>
+<td align="right">-878.5</td>
+</tr>
+<tr class="odd">
+<td>10</td>
+<td align="right">724</td>
+<td align="right">0.0000</td>
+<td align="right">0.4216</td>
+<td align="right">0.4301</td>
+<td align="right">0.0161</td>
+<td align="right">122.6</td>
+<td align="right">0.0000</td>
+<td align="right">2224</td>
+<td align="right">1046</td>
+<td align="right">1058</td>
+<td align="right">724</td>
+<td align="left">Redmond</td>
+<td align="right">121</td>
+<td align="right">137</td>
+<td align="right">91</td>
+<td align="right">110</td>
+<td align="right">167</td>
+<td align="right">121</td>
+<td align="right">747</td>
+<td align="left">f</td>
+<td align="left">REDMOND</td>
+<td align="right">15.50</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">-0.5</td>
+<td align="right">-0.1073</td>
+<td align="right">-0.0067</td>
+<td align="right">-0.0015</td>
+<td align="right">0.8744</td>
+<td align="right">-0.2551</td>
+<td align="right">-672.2</td>
+</tr>
+<tr class="even">
+<td>9</td>
+<td align="right">710</td>
+<td align="right">0.9501</td>
+<td align="right">0.6361</td>
+<td align="right">0.4435</td>
+<td align="right">0.0190</td>
+<td align="right">120.8</td>
+<td align="right">0.5101</td>
+<td align="right">3569</td>
+<td align="right">830</td>
+<td align="right">841</td>
+<td align="right">710</td>
+<td align="left">Klamath Falls</td>
+<td align="right">141</td>
+<td align="right">102</td>
+<td align="right">94</td>
+<td align="right">123</td>
+<td align="right">139</td>
+<td align="right">119</td>
+<td align="right">718</td>
+<td align="left">f</td>
+<td align="left">KLAMATH F</td>
+<td align="right">16.27</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">0.5</td>
+<td align="right">0.1073</td>
+<td align="right">0.0067</td>
+<td align="right">0.0015</td>
+<td align="right">-0.8744</td>
+<td align="right">0.2551</td>
+<td align="right">672.2</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td align="right">810</td>
+<td align="right">0.0000</td>
+<td align="right">0.6049</td>
+<td align="right">0.4174</td>
+<td align="right">0.0134</td>
+<td align="right">122.7</td>
+<td align="right">0.0022</td>
+<td align="right">3277</td>
+<td align="right">442</td>
+<td align="right">448</td>
+<td align="right">810</td>
+<td align="left">Pendleton</td>
+<td align="right">71</td>
+<td align="right">71</td>
+<td align="right">56</td>
+<td align="right">73</td>
+<td align="right">80</td>
+<td align="right">53</td>
+<td align="right">404</td>
+<td align="left">g</td>
+<td align="left">PENDLETON</td>
+<td align="right">15.92</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">-0.5</td>
+<td align="right">0.0066</td>
+<td align="right">-0.0521</td>
+<td align="right">-0.0025</td>
+<td align="right">5.6293</td>
+<td align="right">-0.3106</td>
+<td align="right">449.9</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td align="right">811</td>
+<td align="right">0.9433</td>
+<td align="right">0.5917</td>
+<td align="right">0.5217</td>
+<td align="right">0.0183</td>
+<td align="right">111.4</td>
+<td align="right">0.6233</td>
+<td align="right">2377</td>
+<td align="right">594</td>
+<td align="right">600</td>
+<td align="right">811</td>
+<td align="left">Hermiston</td>
+<td align="right">94</td>
+<td align="right">69</td>
+<td align="right">85</td>
+<td align="right">93</td>
+<td align="right">90</td>
+<td align="right">56</td>
+<td align="right">487</td>
+<td align="left">g</td>
+<td align="left">HERMISTON</td>
+<td align="right">15.19</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0.5</td>
+<td align="right">-0.0066</td>
+<td align="right">0.0521</td>
+<td align="right">0.0025</td>
+<td align="right">-5.6293</td>
+<td align="right">0.3106</td>
+<td align="right">-449.9</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div id="office-level-effects" class="section level1">
