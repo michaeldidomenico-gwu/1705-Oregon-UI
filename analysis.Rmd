@@ -210,7 +210,8 @@ Now test the hypothesis of no effects. Because the sample size is so small, we u
 ## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
 library(coin)
 wrkdat$treatF <- factor(wrkdat$treat,levels=c("1","0"))
-welcomeTest <- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat, distribution=approximate(B=1000))
+set.seed(20161102)
+welcomeTest <- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat, distribution=approximate(B=5000))
 welcomeTest
 
 ## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
@@ -220,7 +221,7 @@ xb1$results
 
 ## Now do it for all
 theps <- sapply(aggoutcomes,function(v){
-			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat,distribution=approximate(B=1000))
+			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat,distribution=approximate(B=5000))
 			 return(pvalue(results))
 })
 theps

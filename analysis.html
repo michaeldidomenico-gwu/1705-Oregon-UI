@@ -611,14 +611,15 @@ library(coin)</code></pre>
 <pre><code>## Loading required package: methods</code></pre>
 <pre><code>## Loading required package: survival</code></pre>
 <pre class="r"><code>wrkdat$treatF &lt;- factor(wrkdat$treat,levels=c(&quot;1&quot;,&quot;0&quot;))
-welcomeTest &lt;- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat, distribution=approximate(B=1000))
+set.seed(20161102)
+welcomeTest &lt;- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat, distribution=approximate(B=5000))
 welcomeTest</code></pre>
 <pre><code>## 
 ##  Approximative Two-Sample Fisher-Pitman Permutation Test
 ## 
 ## data:  welcome_mean by treatF (1, 0) 
 ##   stratified by pair
-## Z = 0.017873, p-value = 0.969
+## Z = 0.017873, p-value = 0.968
 ## alternative hypothesis: true mu is not equal to 0</code></pre>
 <pre class="r"><code>## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
 library(RItools)</code></pre>
@@ -643,23 +644,23 @@ xb1$results</code></pre>
 ## [1] &quot;welcome_mean&quot;</code></pre>
 <pre class="r"><code>## Now do it for all
 theps &lt;- sapply(aggoutcomes,function(v){
-             results &lt;- oneway_test(reformulate(&quot;treatF | pair &quot;,response=v),data=wrkdat,distribution=approximate(B=1000))
+             results &lt;- oneway_test(reformulate(&quot;treatF | pair &quot;,response=v),data=wrkdat,distribution=approximate(B=5000))
              return(pvalue(results))
 })
 theps</code></pre>
 <pre><code>##      welcomeMD       uiexitMD     employedMD time.to.exitMD        plansMD 
-##          0.975          0.906          0.014          0.842          0.019 
+##         0.9664         0.8982         0.0178         0.8460         0.0170 
 ##        wagesMD 
-##          0.420</code></pre>
+##         0.4226</code></pre>
 <p>Some results</p>
 <pre class="r"><code>cbind(theITTS,theps)</code></pre>
-<pre><code>##                      theITTS theps
-## welcomeMD       7.364342e-04 0.975
-## uiexitMD       -2.764910e-03 0.906
-## employedMD      4.048391e-03 0.014
-## time.to.exitMD  5.297039e-01 0.842
-## plansMD         5.694926e-01 0.019
-## wagesMD         5.040047e+02 0.420</code></pre>
+<pre><code>##                      theITTS  theps
+## welcomeMD       7.364342e-04 0.9664
+## uiexitMD       -2.764910e-03 0.8982
+## employedMD      4.048391e-03 0.0178
+## time.to.exitMD  5.297039e-01 0.8460
+## plansMD         5.694926e-01 0.0170
+## wagesMD         5.040047e+02 0.4226</code></pre>
 </div>
 
 
