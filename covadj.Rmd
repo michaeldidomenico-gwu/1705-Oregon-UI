@@ -1,0 +1,151 @@
+
+
+#Next Model the Outcome of UI Exit w/o Treatment
+
+First, we deterimined which variables were most predictive of the outcome of interest (exiting UI) in order to remove unnecessary noise to amplify the power of the study.
+
+The variables that were most predictive were **Worker Profile Score**, **Education Level**, and **Disability Status**.
+
+```{r Model_Creation}
+#Create a function to predict UI Exit from a given "Variable"
+dsMonthlyExitModel <- function(df, variable)
+{
+
+	df$ui.exit.rc <- 0
+	df[df$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+	df$Worker.Profile.Score <- as.numeric(df$Worker.Profile.Score)
+
+	tmp.m1 <- lm(ui.exit.rc ~ df[, variable], data = df)
+	print(variable)
+	summary(tmp.m1)
+	return(tmp.m1)
+}
+
+#Create a function to run a model predicting UI Exit from 8 variables
+dsMonthlyExitModel2 <- function(df, variable)
+{
+
+	df$ui.exit.rc <- 0
+	df[df$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+	df$Worker.Profile.Score <- as.numeric(df$Worker.Profile.Score)
+
+	tmp.m1 <- lm(ui.exit.rc ~ df[, variable[1]] +
+		     df[, variable[2]] +
+		     df[, variable[3]] +
+		     df[, variable[4]] +
+		     df[, variable[5]] +
+		     df[, variable[6]] +
+		     df[, variable[7]] +
+		     df[, variable[8]], data = df)
+	print(variable)
+	summary(tmp.m1)
+	return(tmp.m1)
+}
+
+#Create a model to predict UI Exit from 3 variables -- the variables that were predictive in the 8 variable model
+dsMonthlyExitModel3 <- function(df, variable)
+{
+
+	df$ui.exit.rc <- 0
+	df[df$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+	df$Worker.Profile.Score <- as.numeric(df$Worker.Profile.Score)
+
+	tmp.m1 <- lm(ui.exit.rc ~ df[, variable[1]] +
+		     df[, variable[2]] +
+		     df[, variable[3]], data = df)
+	print(variable)
+	summary(tmp.m1)
+	return(tmp.m1)
+}
+
+
+#Use March and April Data first to determine if the 3 variables are significantly predictive
+or.df1$ui.exit.rc <- 0
+or.df1[or.df1$Exited.UI.Flag=="Y", "ui.exit.rc"] <- 1
+or.df1$Worker.Profile.Score <- as.numeric(or.df1$Worker.Profile.Score)
+variableList <- c("WBA", "Worker.Profile.Score", "Age", "Education.Level", "Race.White.Flag", "Ethnicity.Hispanic.Latino.Flag", "Ex.Offender.Flag", "Disability")
+stats <- c("Estimate", "sigma", "tstat", "pvalue")
+
+modelsAPRIL <- matrix(ncol = 4, nrow = 8, dimnames = list(variableList, stats))
+for(i in 1:8)
+{
+	modelsAPRIL[i, ] <- summary(dsMonthlyExitModel(or.df2, variableList[i]))$coefficient[2, ]
+}
+knitr::kable(modelsAPRIL) #These are the esimates of the first level of the models for APRIL (because March only had one week of PEP)
+
+#Make a multivariate model with all 8 predictive variables using both March and April
+comb.m1 <- (dsMonthlyExitModel2(or.df1, variableList)) #March
+comb.m2 <- (dsMonthlyExitModel2(or.df2, variableList)) #April
+summary(comb.m1)
+summary(comb.m2)
+
+#Use this model going forward, Worker.Profile.Score + Education.Level + Disability
+comb.m3 <- dsMonthlyExitModel3(or.df2, variableList[c(2, 4, 8)]) #April
+summary(comb.m3) #April
+
+#Run the models for May to see if it holds true -- Yes for Profile and Disability, no for Education
+comb.m3.MAY <- dsMonthlyExitModel3(or.df3, variableList[c(2, 4, 8)])
+summary(comb.m3.MAY)
+
+```
+
+
+```{r Pair_Centering}
+#----Missing Values so COV adjust in last step now-----
+#STEP 1: create covariate adjusted UI exit residuals
+#or.dfa <- ds.na.omit(or.df2)
+#m1.res <- ds.cov.uiexit(or.dfa)
+#summary(m1.res) #check model
+#or.dfa$uiexit.resid <- m1.res$residuals #insert residuals into dataframe to be the main outcome
+
+#This is now the first step
+#STEP 2: Create pair centered data
+ds.create.pairs <- function(df)
+{
+	df$pair <- as.character(NA)
+	df$treat <- 0
+	for(i in 1:14)
+	{
+		df[as.character(df$fo)==pairs2[i, "fo.num"], "pair"] <- as.character(pairs2[i, "pair"])
+		df[as.character(df$fo)==pairs2[i, "fo.num"], "treat"] <- pairs2[i, "treat"]
+	}
+
+	return(df)
+}
+
+or.dfb <- or.df.TOTAL
+or.dfb$pair <- as.character(NA)
+or.dfb$treat <- 0
+for(i in 1:14)
+{
+	or.dfb[which(as.character(or.dfb$`277.Field.Office`)==pairs2[i, "fo.num"]), "pair"] <- as.character(pairs2[i, "pair"])
+	or.dfb[which(as.character(or.dfb$`277.Field.Office`)==pairs2[i, "fo.num"]), "treat"] <- pairs2[i, "treat"]
+}
+
+tmp.pair <- c("a", "b", "c", "d", "e", "f", "g")
+
+or.dfb$uiexit.pair.delta <- NA #create a pair variable
+or.dfb$employed.pair.delta <- NA
+
+for(i in 1:7)
+{
+	pair.mean <- mean(or.dfb[or.dfb$pair==tmp.pair[i], "uiexit"], na.rm=TRUE)
+	print(pair.mean)
+	or.dfb[which(or.dfb$pair==tmp.pair[i]), "uiexit.pair.delta"] <-   or.dfb[which(or.dfb$pair==tmp.pair[i]),"uiexit"] - pair.mean #create pair centered variable
+
+	pair.mean.emp <- mean(or.dfb[or.dfb$pair==tmp.pair[i], "employed"], na.rm = TRUE)
+	print(pair.mean.emp)
+	or.dfb[which(or.dfb$pair==tmp.pair[i]), "employed.pair.delta"] <- or.dfb[which(or.dfb$pair==tmp.pair[i]), "employed"] - pair.mean.emp
+}
+
+
+```
+
+Save analysis file. Only lose one person here.
+
+```{r}
+or.dfb$fo <- as.factor(or.dfb$`277.Field.Office`)
+or.dfb <- or.dfb[which(!is.na(or.dfb$PEP.Unique.ID)), ]
+
+save(or.dfb,file="Data/or.dfb.rda")
+```

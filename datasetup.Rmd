@@ -113,14 +113,6 @@ or.df.TOTAL$uiexit.date <- as.Date(or.df.TOTAL$`If.Exited,.Date.Claim.Ended`, or
 or.df.TOTAL$claim.date <-  as.Date(or.df.TOTAL$Initial.Claim.Entered.Date, origin = "1900-01-01")
 ```
 
-Save the file
-
-```{r}
-save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,file="Data/monthlyordat.rda")
-save(or.df.TOTAL, file="Data/or.df.TOTAL.rda")
-
-```
-
 
 # Key Analytic Variables
 
@@ -131,21 +123,18 @@ Units:
 
 Pair random assignment of clusters (paired cluster assignment, individual level outcomes)
 
-treat 
 
 ### Outcomes
 
-welcome meeting -- 
-
-uiexit -- stop making claims fro 3 weeks in a row before exhausting
-
-employment (employed.pair.delta )
-
-wages
-
-amount of time to exit (time.to.exit) --- survival analysis
-
-
+```{r}
+or.df.TOTAL$plans <- as.numeric(or.df.TOTAL$`#.of.PEPP.Plans`)
+or.df.TOTAL$wages <- or.df.TOTAL$`Amount.of.Wages`
+or.df.TOTAL$uiexit.date <- as.Date(or.df.TOTAL$`If.Exited,.Date.Claim.Ended`, origin = "1900-01-01")
+or.df.TOTAL$claim.date <-  as.Date(or.df.TOTAL$Initial.Claim.Entered.Date, origin = "1900-01-01")
+start.date <- strptime(c("27.03.2016"), format = "%d.%m.%Y")
+end.date <- strptime(c("30.09.2016"), format = "%d.%m.%Y")
+or.df.TOTAL$time.to.exit <- ifelse(or.df.TOTAL$uiexit==1, difftime(or.df.TOTAL$uiexit.date, or.df.TOTAL$claim.date), difftime(end.date, start.date))
+```
 
 ### Covariates
 
@@ -154,4 +143,19 @@ entered pre-treatment and in ignorance of treatment status during the filling
 out of their online profile.
 
 
+
+Delete the one person with missing id:
+
+```{r}
+or.df.TOTAL <- or.df.TOTAL[!is.na(or.df.TOTAL$PEP.Unique.ID),]
+or.df.TOTAL$fonum <- or.df.TOTAL$'277.Field.Office'
+```
+
+## Save the files
+
+```{r}
+save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,file="Data/monthlyordat.rda")
+save(or.df.TOTAL, file="Data/or.df.TOTAL.rda")
+
+```
 
