@@ -7,5 +7,5 @@ The `datasetup.Rmd` file creates the working file(s) --- one at the individual l
 
 The `analysis.Rmd` file does the analysis.
 
-Here is the [HTML Version of these Results](https://htmlpreview.github.io/?https://github.com/sbstusa/oregonui/blob/drafts/analysis.html)
+Here is the [HTML Version of these Results](https://htmlpreview.github.io/?https://github.com/sbstusa/oregonui/blob/master/analysis.html)
 
