@@ -317,7 +317,11 @@ who have been in the program longer (say, those with `BYE<=201718` (Benefits
 Year End Date of the 18th week of 2017).
 
 First, however, before we divide up the sample in this way, we should see if
-there are differential effects of treatment on BYE.
+there are differential effects of treatment on BYE. Even if we find that the
+treated and control groups are balanced on this,  if we think that the
+treatment may have a causal effect on this factor, then, below, we may want to
+do a different kind of analysis (i.e. consider BYE as the dose and random
+assignment as the instrument).
 
 ```{r byextreat, results="markup"}
 ## We are just looking for systematic relationships between BYE and treatment status, so it is ok to make this numeric.
@@ -370,46 +374,41 @@ stopifnot(all.equal(wrkdat2$welcomeMD[wrkdat2$pair=="a"],
 
 
 ```{r estimates2, results='hide'}
-## Next calc the diff of means for all outcomes
-aggoutcomes <- paste(outcomes,"MD",sep="")
-theITTS <- sapply(aggoutcomes,function(v){
+theITTS2 <- sapply(aggoutcomes,function(v){
 			  coef(lm(reformulate("treatMD",response=v),data=wrkdat2))[[2]]
 })
-theITTS
+theITTS2
 ```
 
 
-```{r tests, results='hide'}
+```{r tests2, results='hide'}
 ## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
 wrkdat2$treatF <- factor(wrkdat2$treat,levels=c("1","0"))
 set.seed(20161102)
-welcomeTest <- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat2, distribution=approximate(B=5000))
-welcomeTest
-
-## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
-xb1<-xBalance(treat ~ welcome_mean,strata=list(pair=~pair),data=wrkdat2,report="all")
-xb1$results
-
 ## Now do it for all
-theps <- sapply(aggoutcomes,function(v){
+theps2 <- sapply(aggoutcomes,function(v){
 			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat2,distribution=approximate(B=5000))
 			 return(pvalue(results))
 })
-theps
+theps2
 ```
 
-
-We present differences of means below --- they are an unbiased esimtator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests.Because the sample size is so small, we use a randomization-based approach.
+Here are the estimated ITTs and p-values for the null of no effects among the group that had the most time in the program.
 
 ```{r}
-cbind(theITTS,theps)
+cbind(theITTS2,theps2)
 ```
 
 # Test the null of no effects for any outcome
 
-Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
-
 ```{r}
-npcresults <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
-npcresults$p.values
+npcresults2 <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults2$p.values
 ```
+
+Here we see that we can argue against the null of no effects for any outcome
+with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the
+individual p-values here because they are exact (as compared to the
+approximative ones above). The test statistic used here, by default, is
+Student's T.
+
