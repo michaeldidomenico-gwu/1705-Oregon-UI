@@ -41,44 +41,56 @@ Pepp message -- message number
 
 ```{r Data_Import}
 library("openxlsx")
-## library("excel.link")
-## library("RDCOMClient")
-## setwd("~/SBST/DOL/UI Oregon/Analysis/OR_Analysis")
-
-#----Set this to your main data file (the password protected file from DG)
-#The file can be downloaded here:
-#https://drive.google.com/open?id=0B8XYiVZ-nW2SOUNaZ1FDUDJrNk15VHlHNE8tTWNCUmdhbUZv
-## original.filepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/Data/PEPP UI Monthly Dataset 03282016-09302016 V2.xlsx"
-original.filepath <- "Data/PEPP UI Monthly Dataset 03282016-09302016 V2.xlsx"
-
-#Comment Out to Speed Program Run and Avoid multiple re-writes of the file
-## eApp <- COMCreate("Excel.Application")
-## wk <- eApp$Workbooks()$Open(Filename=original.filepath,Password="drpepper")
-## wk$SaveAs(Filename = "PEPP UI Monthly Dataset 03282016-09302016-ANALYSIS.xlsx", Password = '')
-#wk$Close(SaveChanges = F)
-
-## https://stackoverflow.com/questions/34233738/how-to-read-an-xls-file-that-is-encrypted-with-r
-## xl.read.file(filename, ...... password = NULL)
-
-#Once the code above has been run it can be commented out and only the line below is necessary for importing the data
-## filepath <- "Data/PEPP UI Monthly Dataset 03282016-09302016-ANALYSIS.xlsx"
 filepath <- "Data/PEPP UI Monthly Dataset 03282016-09302016 V2 No Password.xlsx" ## By hand remove the password protection.
 
 #Create dataframes for each month from Mar - Sep 2016
-or.df1 <- read.xlsx(filepath, sheet = 1) #March
-or.df2 <- read.xlsx(filepath, sheet = 2) #April
-or.df3 <- read.xlsx(filepath, sheet = 3) #May
-or.df4 <- read.xlsx(filepath, sheet = 4) #June
-or.df5 <- read.xlsx(filepath, sheet = 5) #July
-or.df6 <- read.xlsx(filepath, sheet = 6) #August
-or.df7 <- read.xlsx(filepath, sheet = 7) #September
+or.df1 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 1) #March
+or.df2 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 2) #April
+or.df3 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 3) #May
+or.df4 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 4) #June
+or.df5 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 5) #July
+or.df6 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 6) #August
+or.df7 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 7) #September
 
-#Create a merged dataframe
-or.df.TOTAL <- rbind(or.df1, or.df2, or.df3, or.df4, or.df5, or.df6, or.df7)
-dim(or.df.TOTAL)
-stopifnot(nrow(or.df.TOTAL)==length(unique(or.df.TOTAL$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
+# Create a merged dataframe from the first 7 months
 
+## Check to make sure all column names are the same
+stopifnot(all(names(or.df1)==names(or.df2)))
+stopifnot(all(names(or.df1)==names(or.df3)))
+stopifnot(all(names(or.df1)==names(or.df4)))
+stopifnot(all(names(or.df1)==names(or.df5)))
+stopifnot(all(names(or.df1)==names(or.df6)))
+stopifnot(all(names(or.df1)==names(or.df7)))
 
+or.df1to7 <- rbind(or.df1, or.df2, or.df3, or.df4, or.df5, or.df6, or.df7)
+dim(or.df1to7)
+stopifnot(nrow(or.df1to7)==length(unique(or.df1to7$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
+```
+
+Now begin to add other data from other months. For some reason, these files do
+not have the same columns as the first months, so we have to rename and strip
+off only the columns that matter from **all** of the data in the hopes that we
+can make one big file. Defaulting to csv because that is part of our standard
+operating procedure. The data file for October does not have key variables in
+it, so we ignore october for now.
+
+```{r}
+## or.df8 <- read.csv("Data/PEPP UI Monthly Dataset 100116-103116 No Password No Formulas.csv")
+## or.df8$fonum <- or.df8$FO_277
+## or.df9 <- read.csv("Data/PEPP UI Monthly Dataset 110116-113016 No Password.csv")
+## Using Excel files here to save work given previous code. In the future should be csv.
+or.df9 <- read.xlsx("Data/PEPP UI Monthly Dataset 110116-113016 No Password.xlsx",check.names=TRUE, detectDates=TRUE)
+setdiff(names(or.df1),names(or.df9)) ## names of variables on the main dataset not in the 9th set
+setdiff(names(or.df9),names(or.df1)) ## names of variables on the 9th dataset not in the main dataset
+## Changing some names of variables based on my guesses about equivalences
+or.df9$BYE <- or.df9$Claim.BYE
+or.df9$PEPP.Plan.Upload.Date <- or.df9$Latest.PEPP.Plan.Upload.Date
+or.df9$PEPP.Message <- or.df9$Latest.PEPP.Message.Sent
+or.df9$If.Exited..Date.Claim.Ended <- or.df9$Date.Claiming.Stopped
+or.df9$PEPP.Message.Sent.Date <- or.df9$Latest.PEPP.Message.Sent.Date
+
+## Make the larger dataset
+or.df.TOTAL  <- rbind(or.df1to7,or.df9[,names(or.df1to7)])
 ```
 
 
@@ -93,9 +105,9 @@ or.df.TOTAL$Education.Level <- ordered(or.df.TOTAL$Education.Level,
 						  "POST SECONDARY COURSEWORK", "ASSOCIATES", "BACHELORS",
 						  "MASTERS", "DOCTORATE"))
 
-table(or.df.TOTAL$Employed.Flag, or.df.TOTAL$`277.Field.Office`)
+table(or.df.TOTAL$Employed.Flag, or.df.TOTAL$X277.Field.Office,exclude=c())
 
-#Recode Y / N variables to 1 / 0
+# Recode Y / N variables to 1 / 0
 or.df.TOTAL$uiexit <- 0 #set variable to 0
 or.df.TOTAL[or.df.TOTAL$Exited.UI.Flag=="Y","uiexit"] <- 1
 
@@ -108,16 +120,25 @@ or.df.TOTAL[or.df.TOTAL$Received.Insert.Flag=="Y", "insert"] <- 1
 or.df.TOTAL$welcome <- 0
 or.df.TOTAL[which(or.df.TOTAL$Welcome.Process.Completed.Flag=="Y"), "welcome"] <- 1
 
-#Recode dates
-or.df.TOTAL$uiexit.date <- as.Date(or.df.TOTAL$`If.Exited,.Date.Claim.Ended`, origin = "1900-01-01")
-or.df.TOTAL$claim.date <-  as.Date(or.df.TOTAL$Initial.Claim.Entered.Date, origin = "1900-01-01")
+# Rename dates
+or.df.TOTAL$uiexit.date <- or.df.TOTAL$If.Exited..Date.Claim.Ended
+or.df.TOTAL$claim.date <-  or.df.TOTAL$Initial.Claim.Entered.Date
+
+## Check
+tmp <- table(months(or.df.TOTAL$claim.date),exclude=c())
+stopifnot(nrow(or.df1[!is.na(or.df1$PEP.Unique.ID),])==tmp[["March"]])
+stopifnot(nrow(or.df2[!is.na(or.df2$PEP.Unique.ID),])==tmp[["April"]])
+stopifnot(nrow(or.df3[!is.na(or.df3$PEP.Unique.ID),])==tmp[["May"]])
+stopifnot(nrow(or.df4[!is.na(or.df4$PEP.Unique.ID),])==tmp[["June"]])
+stopifnot(nrow(or.df5[!is.na(or.df5$PEP.Unique.ID),])==tmp[["July"]])
+stopifnot(nrow(or.df6[!is.na(or.df6$PEP.Unique.ID),])==tmp[["August"]])
+stopifnot(nrow(or.df7[!is.na(or.df7$PEP.Unique.ID),])==tmp[["September"]])
 ```
 
 
 # Key Analytic Variables
 
-`or.dfb$fo <- as.factor(or.dfb$277.Field.Office)`
-Units: 
+**Units of randomization are field offices** are in `X277.Field.Office`
 
 ### Design/Intervention
 
@@ -127,9 +148,9 @@ Pair random assignment of clusters (paired cluster assignment, individual level 
 ### Outcomes
 
 ```{r}
-or.df.TOTAL$plans <- as.numeric(or.df.TOTAL$`#.of.PEPP.Plans`)
-or.df.TOTAL$wages <- or.df.TOTAL$`Amount.of.Wages`
-or.df.TOTAL$uiexit.date <- as.Date(or.df.TOTAL$`If.Exited,.Date.Claim.Ended`, origin = "1900-01-01")
+or.df.TOTAL$plans <- as.numeric(or.df.TOTAL$X..of.PEPP.Plans)
+or.df.TOTAL$wages <- or.df.TOTAL$Amount.of.Wages
+or.df.TOTAL$uiexit.date <- as.Date(or.df.TOTAL$If.Exited..Date.Claim.Ended, origin = "1900-01-01")
 or.df.TOTAL$claim.date <-  as.Date(or.df.TOTAL$Initial.Claim.Entered.Date, origin = "1900-01-01")
 start.date <- strptime(c("27.03.2016"), format = "%d.%m.%Y")
 end.date <- strptime(c("30.09.2016"), format = "%d.%m.%Y")
@@ -142,13 +163,14 @@ Variables like race and lowest acceptable age, veteran status, etc.. were
 entered pre-treatment and in ignorance of treatment status during the filling
 out of their online profile.
 
-
+### Missing data
 
 Delete the one person with missing id:
 
 ```{r}
+stopifnot(sum(is.na(or.df.TOTAL$PEP.Unique.ID))==1)
 or.df.TOTAL <- or.df.TOTAL[!is.na(or.df.TOTAL$PEP.Unique.ID),]
-or.df.TOTAL$fonum <- or.df.TOTAL$'277.Field.Office'
+or.df.TOTAL$fonum <- or.df.TOTAL$X277.Field.Office
 ```
 
 ## Save the files

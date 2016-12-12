@@ -68,7 +68,7 @@ load("Data/monthlyordat.rda") ## Contains the month by month data
 #An important NOTE that welcome meetings are not equivalent to observations
 #There can be someone that applied for UI and in the sample but has not done their welcome
 #If this is the case then they have not received a payment, b/c the welcome is required
-offices <- c(unique(or.df.TOTAL$'277.Field.Office'))[1:14]
+offices <- unique(or.df.TOTAL$fonum)
 months <- c('mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep')
 desc.table.1 <- matrix(nrow = 14, ncol = 7,
 		       dimnames = list(offices, months))
@@ -76,44 +76,48 @@ desc.table.1 <- matrix(nrow = 14, ncol = 7,
 #Add the counts of welcomes for March
 for(i in 1:14)
 {
-	desc.table.1[i, 1] <- length(which(or.df1$`277.Field.Office`==offices[i]))
+	desc.table.1[i, 1] <- length(which(or.df1$X277.Field.Office==offices[i]))
 }
 
 #Add the counts of welcomes for April
 for(i in 1:14)
 {
-	desc.table.1[i, 2] <- length(which(or.df2$`277.Field.Office`==offices[i]))
+	desc.table.1[i, 2] <- length(which(or.df2$X277.Field.Office==offices[i]))
 }
 
 #Add the counts of welcomes for May
 for(i in 1:14)
 {
-	desc.table.1[i, 3] <- length(which(or.df3$`277.Field.Office`==offices[i]))
+	desc.table.1[i, 3] <- length(which(or.df3$X277.Field.Office==offices[i]))
 }
 
 #Add the counts of welcomes for June
 for(i in 1:14)
 {
-	desc.table.1[i, 4] <- length(which(or.df4$`277.Field.Office`==offices[i]))
+	desc.table.1[i, 4] <- length(which(or.df4$X277.Field.Office==offices[i]))
 }
 
 #Add the counts of welcomes for July
 for(i in 1:14)
 {
-	desc.table.1[i, 5] <- length(which(or.df5$`277.Field.Office`==offices[i]))
+	desc.table.1[i, 5] <- length(which(or.df5$X277.Field.Office==offices[i]))
 }
 
 #Add the counts of welcomes for August
 for(i in 1:14)
 {
-	desc.table.1[i, 6] <- length(which(or.df6$`277.Field.Office`==offices[i]))
+	desc.table.1[i, 6] <- length(which(or.df6$X277.Field.Office==offices[i]))
 }
 
 #Add the counts of welcomes for September
 for(i in 1:14)
 {
-	desc.table.1[i, 7] <- length(which(or.df7$`277.Field.Office`==offices[i]))
+	desc.table.1[i, 7] <- length(which(or.df7$X277.Field.Office==offices[i]))
 }
+
+## Order table
+
+desc.table.1 <- desc.table.1[order(row.names(desc.table.1)),]
 
 ```
 
@@ -122,7 +126,15 @@ for(i in 1:14)
 The following table shows the number of welcome conversations conducted at each of the field offices in each month. The first column has the field office labels.
 
 ```{r}
-knitr::kable(desc.table.1)
+tmp <- sapply(split(or.df.TOTAL,months(or.df.TOTAL$claim.date)),function(dat){ table(dat$fonum) })
+tmp <- tmp[,c("March","April","May","June","July","August","September","November")]
+stopifnot(all.equal(tmp[,1:7],desc.table.1,check.attributes=FALSE))
+```
+
+
+```{r}
+##knitr::kable(desc.table.1)
+knitr::kable(tmp)
 ```
 
 
@@ -136,8 +148,8 @@ of the Oregon State program.
 
 ```{r Pull_Pairs, results='hide'}
 #----ORIGINAL CODE FOR RANDOMIZATION------
-##pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv" 
-pairfilepath <- "Data/Oregon_Pairs_14-Field-Offices_20160111.csv" 
+##pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv"
+pairfilepath <- "Data/Oregon_Pairs_14-Field-Offices_20160111.csv"
 pairs2 <- read.csv(pairfilepath, row.names = 1)
 row.names(pairs2)<-pairs2$fo.num
 pairs2 <- pairs2[order(pairs2$pair), ] #ensure that all pairs are next to each other
@@ -253,7 +265,7 @@ knitr::kable(wrkdat) #If this table is too big it could be broken into pieces
 
 ## Check the pair centering
 stopifnot(all.equal(wrkdat$welcomeMD[wrkdat$pair=="a"],
-		    with(wrkdat[wrkdat$pair=="a",], welcome_mean - mean(welcome_mean)) 
+		    with(wrkdat[wrkdat$pair=="a",], welcome_mean - mean(welcome_mean))
 		    ) )
 ```
 
@@ -367,7 +379,7 @@ knitr::kable(wrkdat2) #If this table is too big it could be broken into pieces
 
 ## Check the pair centering
 stopifnot(all.equal(wrkdat2$welcomeMD[wrkdat2$pair=="a"],
-		    with(wrkdat2[wrkdat2$pair=="a",], welcome_mean - mean(welcome_mean)) 
+		    with(wrkdat2[wrkdat2$pair=="a",], welcome_mean - mean(welcome_mean))
 		    ) )
 ```
 
