@@ -35,7 +35,6 @@ PEPP Plan Upload Date -- Date uploaded the plan (the staff member uploads the pl
 PEPP Message Sent Date --  they they received the most recent emails, and what the content was, 12 or 14 different emails. Sequential. If they received email 5, then they received email 4.
 Pepp message -- message number
 # Pepp Messages Sent --- depends on length of time that they are on UI.
-
 ```
 
 
@@ -87,6 +86,7 @@ or.df9$PEPP.Plan.Upload.Date <- or.df9$Latest.PEPP.Plan.Upload.Date
 or.df9$PEPP.Message <- or.df9$Latest.PEPP.Message.Sent
 or.df9$If.Exited..Date.Claim.Ended <- or.df9$Date.Claiming.Stopped
 or.df9$PEPP.Message.Sent.Date <- or.df9$Latest.PEPP.Message.Sent.Date
+stopifnot(nrow(or.df9)==length(unique(or.df9$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
 
 ## October has the same names as November
 or.df8 <- read.xlsx("Data/PEPP UI Monthly Dataset 100116-103116 No Password Nov Names.xlsx",check.names=TRUE, detectDates=TRUE)
@@ -98,17 +98,115 @@ or.df8$PEPP.Plan.Upload.Date <- or.df8$Latest.PEPP.Plan.Upload.Date
 or.df8$PEPP.Message <- or.df8$Latest.PEPP.Message.Sent
 or.df8$If.Exited..Date.Claim.Ended <- or.df8$Date.Claiming.Stopped
 or.df8$PEPP.Message.Sent.Date <- or.df8$Latest.PEPP.Message.Sent.Date
+stopifnot(nrow(or.df8)==length(unique(or.df8$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
 ```
 
-
-Make the larger dataset
-
+### Combine datasets
 ```{r}
 or.df.TOTAL  <- rbind(or.df1to7,
 		      or.df8[,names(or.df1to7)],
 		      or.df9[,names(or.df1to7)])
 ```
 
+### Missing data
+
+Delete the one person with missing id:
+
+```{r}
+## Make sure only 1 person has missing ID data
+stopifnot(sum(is.na(or.df.TOTAL$PEP.Unique.ID))==1)
+or.df.TOTAL <- or.df.TOTAL[!is.na(or.df.TOTAL$PEP.Unique.ID),]
+```
+
+### Duplicated IDs
+
+We have some duplicate people even though no duplicates on any given file. Some of these people seem to have entered the system in different months.
+
+```{r}
+table(or.df.TOTAL$PEP.Unique.ID)[table(or.df.TOTAL$PEP.Unique.ID)>1]
+dupids <- names(table(or.df.TOTAL$PEP.Unique.ID)[table(or.df.TOTAL$PEP.Unique.ID)>1])
+
+dups<-or.df.TOTAL[or.df.TOTAL$PEP.Unique.ID %in% dupids,]
+dups <- dups[order(dups$PEP.Unique.ID,dups$Initial.Claim.Entered.Date),]
+dups[,c("PEP.Unique.ID","Initial.Claim.Entered.Date",
+	"X277.Field.Office","Age","Gender.Code",
+	"Exited.UI.Flag")]
+```
+
+For now, keeping the first/earlier entry, but we will need actual sleuthing here later.
+
+```{r}
+
+badrows <- sapply(split(dups,dups$PEP.Unique.ID),function(dat){
+	       row.names(dat[dat$Initial.Claim.Entered.Date ==
+			 max(dat$Initial.Claim.Entered.Date),,drop=FALSE]) })
+
+## Test: given sorting order of the dups data, the later obs should be in even numbered positions
+stopifnot(all(badrows==row.names(dups[seq(2,nrow(dups),2),c("PEP.Unique.ID","Initial.Claim.Entered.Date")])))
+
+or.df.TOTAL <- or.df.TOTAL[!(row.names(or.df.TOTAL) %in% badrows),]
+stopifnot(all(table(or.df.TOTAL$PEP.Unique.ID)==1))
+```
+
+Now make row names of the main dataset equal the ID number:
+
+```{r}
+row.names(or.df.TOTAL) <- or.df.TOTAL$PEP.Unique.ID
+```
+
+## Check that the date variables in Excel are Dates
+
+```{r}
+tmp <- table(months(or.df.TOTAL$Initial.Claim.Entered.Date),exclude=c())
+stopifnot(nrow(or.df1[!is.na(or.df1$PEP.Unique.ID),])==tmp[["March"]])
+stopifnot(nrow(or.df2[!is.na(or.df2$PEP.Unique.ID),])==tmp[["April"]])
+stopifnot(nrow(or.df3[!is.na(or.df3$PEP.Unique.ID),])==tmp[["May"]])
+stopifnot(nrow(or.df4[!is.na(or.df4$PEP.Unique.ID),])==tmp[["June"]])
+stopifnot(nrow(or.df5[!is.na(or.df5$PEP.Unique.ID),])==tmp[["July"]])
+stopifnot(nrow(or.df6[!is.na(or.df6$PEP.Unique.ID),])==tmp[["August"]])
+stopifnot(nrow(or.df7[!is.na(or.df7$PEP.Unique.ID),])==tmp[["September"]])
+```
+
+#### Adding latest wage data
+
+```{r}
+or.wages2016Q3 <- read.xlsx("Data/PEPP UI Monthly Dataset Wages Only 030116-063016 No Password.xlsx",check.names=TRUE, detectDates=TRUE)
+setdiff(names(or.df.TOTAL),names(or.wages2016Q3)) ## names of variables on the main dataset not in the wage update
+setdiff(names(or.wages2016Q3),names(or.df.TOTAL)) ## names of variables on the wage update not in the main dataset
+or.wages2016Q3$PEPP.Plan.Upload.Date <- or.wages2016Q3$Latest.PEPP.Plan.Upload.Date
+or.wages2016Q3$PEPP.Message <- or.wages2016Q3$Latest.PEPP.Message.Sent
+or.wages2016Q3$If.Exited..Date.Claim.Ended <- or.wages2016Q3$Date.Claiming.Stopped
+or.wages2016Q3$PEPP.Message.Sent.Date <- or.wages2016Q3$Latest.PEPP.Message.Sent.Date
+or.wages2016Q3<-or.wages2016Q3[,names(or.df.TOTAL)]
+
+
+## Check for duplicates
+stopifnot(all(table(or.wages2016Q3$PEP.Unique.ID)==1))
+row.names(or.wages2016Q3)<-or.wages2016Q3$PEP.Unique.ID
+
+## Looks like some of the folks in the updated data are not in the main dataset
+table(or.wages2016Q3$PEP.Unique.ID %in% row.names(or.df.TOTAL))
+table(or.wages2016Q3$PEP.Unique.ID %in% or.df.TOTAL$PEP.Unique.ID)
+## stopifnot(all(or.wages2016Q3$PEP.Unique.ID %in% row.names(or.df.TOTAL)))
+
+## Update data for people who previously existed in data
+existingids <- or.wages2016Q3$PEP.Unique.ID[or.wages2016Q3$PEP.Unique.ID %in% or.df.TOTAL$PEP.Unique.ID]
+newids <- or.wages2016Q3$PEP.Unique.ID[!(or.wages2016Q3$PEP.Unique.ID %in% or.df.TOTAL$PEP.Unique.ID)]
+
+stopifnot(length(existingids)+length(newids)==nrow(or.wages2016Q3))
+
+or.df.TOTAL[existingids,]<-or.wages2016Q3[existingids,]
+
+## Add rows to the dataset for people who previously had not bee in the data.
+
+or.df.TOTAL <- rbind(or.df.TOTAL,or.wages2016Q3[newids,])
+
+stopifnot(all(table(or.df.TOTAL$PEP.Unique.ID)==1))
+
+```
+
+
+## Recode variables
 
 ```{r Recode_Data}
 library(Hmisc)
@@ -139,16 +237,6 @@ or.df.TOTAL[which(or.df.TOTAL$Welcome.Process.Completed.Flag=="Y"), "welcome"] <
 # Rename dates
 or.df.TOTAL$uiexit.date <- or.df.TOTAL$If.Exited..Date.Claim.Ended
 or.df.TOTAL$claim.date <-  or.df.TOTAL$Initial.Claim.Entered.Date
-
-## Check
-tmp <- table(months(or.df.TOTAL$claim.date),exclude=c())
-stopifnot(nrow(or.df1[!is.na(or.df1$PEP.Unique.ID),])==tmp[["March"]])
-stopifnot(nrow(or.df2[!is.na(or.df2$PEP.Unique.ID),])==tmp[["April"]])
-stopifnot(nrow(or.df3[!is.na(or.df3$PEP.Unique.ID),])==tmp[["May"]])
-stopifnot(nrow(or.df4[!is.na(or.df4$PEP.Unique.ID),])==tmp[["June"]])
-stopifnot(nrow(or.df5[!is.na(or.df5$PEP.Unique.ID),])==tmp[["July"]])
-stopifnot(nrow(or.df6[!is.na(or.df6$PEP.Unique.ID),])==tmp[["August"]])
-stopifnot(nrow(or.df7[!is.na(or.df7$PEP.Unique.ID),])==tmp[["September"]])
 ```
 
 
@@ -160,6 +248,9 @@ stopifnot(nrow(or.df7[!is.na(or.df7$PEP.Unique.ID),])==tmp[["September"]])
 
 Pair random assignment of clusters (paired cluster assignment, individual level outcomes)
 
+```{r}
+or.df.TOTAL$fonum <- or.df.TOTAL$X277.Field.Office
+```
 
 ### Outcomes
 
@@ -178,16 +269,6 @@ or.df.TOTAL$time.to.exit <- ifelse(or.df.TOTAL$uiexit==1, difftime(or.df.TOTAL$u
 Variables like race and lowest acceptable age, veteran status, etc.. were
 entered pre-treatment and in ignorance of treatment status during the filling
 out of their online profile.
-
-### Missing data
-
-Delete the one person with missing id:
-
-```{r}
-stopifnot(sum(is.na(or.df.TOTAL$PEP.Unique.ID))==1)
-or.df.TOTAL <- or.df.TOTAL[!is.na(or.df.TOTAL$PEP.Unique.ID),]
-or.df.TOTAL$fonum <- or.df.TOTAL$X277.Field.Office
-```
 
 ## Save the files
 
