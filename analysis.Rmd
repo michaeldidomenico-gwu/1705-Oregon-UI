@@ -61,79 +61,20 @@ load("Data/or.df.TOTAL.rda")
 load("Data/monthlyordat.rda") ## Contains the month by month data
 ```
 
-
-```{r Welcomes_by_Office, echo=FALSE}
-
-#Create a table showing the number of welcome meetings by month for each office
-#An important NOTE that welcome meetings are not equivalent to observations
-#There can be someone that applied for UI and in the sample but has not done their welcome
-#If this is the case then they have not received a payment, b/c the welcome is required
-offices <- unique(or.df.TOTAL$fonum)
-months <- c('mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep')
-desc.table.1 <- matrix(nrow = 14, ncol = 7,
-		       dimnames = list(offices, months))
-
-#Add the counts of welcomes for March
-for(i in 1:14)
-{
-	desc.table.1[i, 1] <- length(which(or.df1$X277.Field.Office==offices[i]))
-}
-
-#Add the counts of welcomes for April
-for(i in 1:14)
-{
-	desc.table.1[i, 2] <- length(which(or.df2$X277.Field.Office==offices[i]))
-}
-
-#Add the counts of welcomes for May
-for(i in 1:14)
-{
-	desc.table.1[i, 3] <- length(which(or.df3$X277.Field.Office==offices[i]))
-}
-
-#Add the counts of welcomes for June
-for(i in 1:14)
-{
-	desc.table.1[i, 4] <- length(which(or.df4$X277.Field.Office==offices[i]))
-}
-
-#Add the counts of welcomes for July
-for(i in 1:14)
-{
-	desc.table.1[i, 5] <- length(which(or.df5$X277.Field.Office==offices[i]))
-}
-
-#Add the counts of welcomes for August
-for(i in 1:14)
-{
-	desc.table.1[i, 6] <- length(which(or.df6$X277.Field.Office==offices[i]))
-}
-
-#Add the counts of welcomes for September
-for(i in 1:14)
-{
-	desc.table.1[i, 7] <- length(which(or.df7$X277.Field.Office==offices[i]))
-}
-
-## Order table
-
-desc.table.1 <- desc.table.1[order(row.names(desc.table.1)),]
-
-```
-
 ## Table of welcome conversations by field office
 
-The following table shows the number of welcome conversations conducted at each of the field offices in each month. The first column has the field office labels.
+The following table shows the number of welcome conversations conducted at each
+of the field offices in each month. Some of these welcomes come from the month
+by month data pulls. Others come from the updated wages file. The first column
+has the field office labels.
 
 ```{r}
 tmp <- sapply(split(or.df.TOTAL,months(or.df.TOTAL$claim.date)),function(dat){ table(dat$fonum) })
 tmp <- tmp[,c("March","April","May","June","July","August","September","October","November")]
-stopifnot(all.equal(tmp[,1:7],desc.table.1,check.attributes=FALSE))
 ```
 
 
 ```{r}
-##knitr::kable(desc.table.1)
 knitr::kable(tmp)
 ```
 
