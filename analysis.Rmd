@@ -127,7 +127,7 @@ The following table shows the number of welcome conversations conducted at each 
 
 ```{r}
 tmp <- sapply(split(or.df.TOTAL,months(or.df.TOTAL$claim.date)),function(dat){ table(dat$fonum) })
-tmp <- tmp[,c("March","April","May","June","July","August","September","November")]
+tmp <- tmp[,c("March","April","May","June","July","August","September","October","November")]
 stopifnot(all.equal(tmp[,1:7],desc.table.1,check.attributes=FALSE))
 ```
 
@@ -198,11 +198,11 @@ summary(samp.m1)
 summary(samp.m2)
 ```
 
+The number of welcomes and average weeks on UI is from 2015 data (Pre Intervention)
+
 ```{r pairstable}
 #Write out the new dataset with treatment allocation
-#The number of welcomes and average weeks on UI is from 2015 data (Pre Intervention)
 knitr::kable(pairs2[order(pairs2$pair, pairs2$treat), c(1:2, 14, 9, 12, 10)]) #Order by pairs, with control pair office first
-
 ```
 
 ### Outcomes
@@ -223,6 +223,10 @@ covered by the data pull included:
 outcomes <- c("welcome","uiexit","employed","time.to.exit","plans","wages")
 summary(or.df.TOTAL[,outcomes])
 aggvars <- c("insert",outcomes)
+```
+
+``{r}
+table(or.df.TOTAL$uiexit,months(or.df.TOTAL$claim.date))
 ```
 
 ## Employment Center Level analysis

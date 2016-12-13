@@ -70,13 +70,12 @@ stopifnot(nrow(or.df1to7)==length(unique(or.df1to7$PEP.Unique.ID))) #ensure ther
 Now begin to add other data from other months. For some reason, these files do
 not have the same columns as the first months, so we have to rename and strip
 off only the columns that matter from **all** of the data in the hopes that we
-can make one big file. Defaulting to csv because that is part of our standard
-operating procedure. The data file for October does not have key variables in
-it, so we ignore october for now.
+can make one big file. Not using csv to ease use of dates here. We also had to
+replace the variable names for the October file with those from the Nov file
+(see `OctVsNovVarNames.csv` for the cross walk of the original names. Of
+course, we keep the original files for reference, too.)
 
 ```{r}
-## or.df8 <- read.csv("Data/PEPP UI Monthly Dataset 100116-103116 No Password No Formulas.csv")
-## or.df8$fonum <- or.df8$FO_277
 ## or.df9 <- read.csv("Data/PEPP UI Monthly Dataset 110116-113016 No Password.csv")
 ## Using Excel files here to save work given previous code. In the future should be csv.
 or.df9 <- read.xlsx("Data/PEPP UI Monthly Dataset 110116-113016 No Password.xlsx",check.names=TRUE, detectDates=TRUE)
@@ -89,8 +88,25 @@ or.df9$PEPP.Message <- or.df9$Latest.PEPP.Message.Sent
 or.df9$If.Exited..Date.Claim.Ended <- or.df9$Date.Claiming.Stopped
 or.df9$PEPP.Message.Sent.Date <- or.df9$Latest.PEPP.Message.Sent.Date
 
-## Make the larger dataset
-or.df.TOTAL  <- rbind(or.df1to7,or.df9[,names(or.df1to7)])
+## October has the same names as November
+or.df8 <- read.xlsx("Data/PEPP UI Monthly Dataset 100116-103116 No Password Nov Names.xlsx",check.names=TRUE, detectDates=TRUE)
+setdiff(names(or.df1),names(or.df8)) ## names of variables on the main dataset not in the 8th set
+setdiff(names(or.df8),names(or.df1)) ## names of variables on the 8th dataset not in the main dataset
+## Changing some names of variables based on my guesses about equivalences
+or.df8$BYE <- or.df8$Claim.BYE
+or.df8$PEPP.Plan.Upload.Date <- or.df8$Latest.PEPP.Plan.Upload.Date
+or.df8$PEPP.Message <- or.df8$Latest.PEPP.Message.Sent
+or.df8$If.Exited..Date.Claim.Ended <- or.df8$Date.Claiming.Stopped
+or.df8$PEPP.Message.Sent.Date <- or.df8$Latest.PEPP.Message.Sent.Date
+```
+
+
+Make the larger dataset
+
+```{r}
+or.df.TOTAL  <- rbind(or.df1to7,
+		      or.df8[,names(or.df1to7)],
+		      or.df9[,names(or.df1to7)])
 ```
 
 
@@ -176,8 +192,8 @@ or.df.TOTAL$fonum <- or.df.TOTAL$X277.Field.Office
 ## Save the files
 
 ```{r}
-save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,file="Data/monthlyordat.rda")
+save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,or.df8,or.df9,
+     file="Data/monthlyordat.rda")
 save(or.df.TOTAL, file="Data/or.df.TOTAL.rda")
-
 ```
 
