@@ -40,7 +40,7 @@ options(width=132,scipen=8,digits=4)
 
 ## Goal:
 
-Accelerate finding employment and reduce time on unemployment insurance among unemployment insurance clients in Oregon. To test behaviorally informed changes that can be scaled up to other states and incorporated into DOL guidance.
+Accelerate finding employment and reduce time on unemployment insurance among unemployment insurance clients in Oregon. 
 
 This file executes the analysis of the experiment. It relies on files produced by the `datasetup.Rmd` file.
 
