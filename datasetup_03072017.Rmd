@@ -1,0 +1,288 @@
+---
+title: "Data Setup"
+author: "Daniel Shephard, Jake Bowers, Michael DiDomenico, Paul Testa"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: html_document
+---
+
+#Import Data
+Create a separate dataframe for each month for the preliminary data analysis from March 2016 through September 2016 (7 months).
+
+```
+BYE - benefits end date (201711 is 11th week of 2017)
+Inital Claim Entered Date -- when they started
+Worker Profile SCore (WPS) - higher more risky of not getting a job
+Received Insert - Did you get an insert in the mailing. (Intervention 1)
+277 Field Office - Unique IDs for Field Offices in Pairs
+Welcome Process Completed Flag - Compliance: they actually had a meeting and made a four week plan and/or they actually made a claim (in the control group) These people actually get their UI payments. Both have to show up in person to get their payment and complete their process.
+WBA (weekly benefit amount) -- calculated amount, not actual amount
+Exhausted Benefits Flag -- Did you use up all of your benefits
+Claimed Previous Week Flag -- Did they make a claim in the week before the data pull
+Received UI Previous Week Flag -- did they get paid in the week before the data pull
+Previous Four Weeks Average Payment -- Average amount received over the past four weeks. (The average of which ever they have)
+Exited UI -- three consecutive weeks of no claims
+If Exited Date Claim Ended -- date that those three weeks started. what was first week.
+Claim Restarted -- in the ??week?? right before the data pull
+Line Flag 45 Date -- If you have caught in a fraudelent claim (so, an indicator that they are reemployed).
+Employed Flag -- Is an undercount. Based on reports of wages paid from employers.
+(Anyone earning money from an employer not their original employer in a subsequent quarter)
+Quarter of Wages --- the first quarter reported, were reported from those Employed (a 5 month delay in the wage file)
+WF0.Zip.Code --- perhaps zip code of the home of the person
+Email Flag --- do they have an email on file.
+Uploaded a Resume -- own or one that was created for them
+PEPP Plan Upload Date -- Date uploaded the plan (the staff member uploads the plan after the meeting) Som e staff members uploaded them all up in bulk.
+# Pepp Plans -- they should do more plans (mostly people did just one plan)
+PEPP Message Sent Date --  they they received the most recent emails, and what the content was, 12 or 14 different emails. Sequential. If they received email 5, then they received email 4.
+Pepp message -- message number
+# Pepp Messages Sent --- depends on length of time that they are on UI.
+```
+
+```{r Data_Import}
+library("openxlsx")
+filepath <- "Data/PEPP Updated UI Monthly Dataset 030116-123116 NoPassword.xlsx" ## By hand remove the password protection.
+
+#Create dataframes for each month from Mar - December 2016
+or.df1 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 1) #March
+or.df2 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 2) #April
+or.df3 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 3) #May
+or.df4 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 4) #June
+or.df5 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 5) #July
+or.df6 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 6) #August
+or.df7 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 7) #September
+or.df8 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 8) #October
+or.df9 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 9) #November
+or.df10 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 10) #December
+library(lubridate)
+or.df10$Initial.Claim.Entered.Date
+
+# Create a merged dataframe from the first 7 months
+
+## Check to make sure all column names are the same
+stopifnot(all(names(or.df1)==names(or.df2)))
+stopifnot(all(names(or.df1)==names(or.df3)))
+stopifnot(all(names(or.df1)==names(or.df4)))
+stopifnot(all(names(or.df1)==names(or.df5)))
+stopifnot(all(names(or.df1)==names(or.df6)))
+stopifnot(all(names(or.df1)==names(or.df7)))
+stopifnot(all(names(or.df1)==names(or.df8)))
+stopifnot(all(names(or.df1)==names(or.df9)))
+stopifnot(all(names(or.df1)==names(or.df10)))
+
+
+
+or.df <- rbind(or.df1, or.df2, or.df3, or.df4, or.df5, or.df6, or.df7,or.df8,or.df9,or.df10)
+dim(or.df)
+stopifnot(nrow(or.df)==length(unique(or.df$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
+```
+
+Check for missing id:
+
+```{r}
+## 
+
+## Make sure only 1 person has missing ID data
+stopifnot(sum(is.na(or.df$PEP.Unique.ID))==1)
+or.df <- or.df[!is.na(or.df$PEP.Unique.ID),]
+```
+
+## Duplicates
+
+```{r}
+# No duplicate IDs in this dataset
+sum(table(or.df$PEP.Unique.ID)>1)
+```
+
+## Checking Dates
+
+```{r}
+tmp <- table(months(or.df$Initial.Claim.Entered.Date),exclude=c())
+stopifnot(nrow(or.df1[!is.na(or.df1$PEP.Unique.ID),])==tmp[["March"]])
+stopifnot(nrow(or.df2[!is.na(or.df2$PEP.Unique.ID),])==tmp[["April"]])
+stopifnot(nrow(or.df3[!is.na(or.df3$PEP.Unique.ID),])==tmp[["May"]])
+stopifnot(nrow(or.df4[!is.na(or.df4$PEP.Unique.ID),])==tmp[["June"]])
+stopifnot(nrow(or.df5[!is.na(or.df5$PEP.Unique.ID),])==tmp[["July"]])
+stopifnot(nrow(or.df6[!is.na(or.df6$PEP.Unique.ID),])==tmp[["August"]])
+stopifnot(nrow(or.df7[!is.na(or.df7$PEP.Unique.ID),])==tmp[["September"]])
+stopifnot(nrow(or.df8[!is.na(or.df8$PEP.Unique.ID),])==tmp[["October"]])
+stopifnot(nrow(or.df9[!is.na(or.df9$PEP.Unique.ID),])==tmp[["November"]])
+stopifnot(nrow(or.df10[!is.na(or.df10$PEP.Unique.ID),])==tmp[["December"]])
+```
+
+## Checking Dates
+
+```{r}
+range(or.df$Initial.Claim.Entered.Date)
+
+table(or.df$Exited.UI.Flag,useNA="ifany")
+# All 23490 who have not exited UI have no date for when claims stopped
+sum(is.na(or.df$Date.Claiming.Stopped[or.df$Exited.UI.Flag=="N"]))
+# All 23490 who have exited, have a date for when  they exited
+sum(!is.na(or.df$Date.Claiming.Stopped[or.df$Exited.UI.Flag=="Y"]))
+
+# Ensure those dates are after the initial claim date
+sum(or.df$Date.Claiming.Stopped[or.df$Exited.UI.Flag=="Y"]>or.df$Initial.Claim.Entered.Date[or.df$Exited.UI.Flag=="Y"]) # 22533, 
+
+# 957 have initial claim entered dates after they have claimed to have exited the program, all of these cases are within 30 days of each other
+
+table(or.df$Date.Claiming.Stopped[or.df$Exited.UI.Flag=="Y"]-or.df$Initial.Claim.Entered.Date[or.df$Exited.UI.Flag=="Y"])[1:18]
+
+# 203 have an employed flag
+table(or.df$Employed.Flag[or.df$Initial.Claim.Entered.Date>or.df$Date.Claiming.Stopped])
+
+# None have exhausted their benefits
+table(or.df$Exhausted.Benefits.Flag[or.df$Initial.Claim.Entered.Date>or.df$Date.Claiming.Stopped])
+
+
+
+```
+
+
+## Examine participates who restart benefits
+
+```{r}
+sum(is.na(or.df$Date.Claim.Restarted)) # 23348
+sum(!is.na(or.df$Date.Claim.Restarted)) # 17571
+
+# Among thos who Restart Claims, is date after intiial claim
+sum(or.df$Date.Claim.Restarted>or.df$Initial.Claim.Entered.Date,na.rm=T) # 17571
+
+
+
+
+# None of those re-starting claims had claimed in the previous week
+table(or.df$Claimed.Previous.Week.Flag[!is.na(or.df$Date.Claim.Restarted)])
+table(or.df$Claimed.Previous.Week.Flag[is.na(or.df$Date.Claim.Restarted)])
+# Some have exited UI
+table(or.df$Exited.UI.Flag[is.na(or.df$Date.Claim.Restarted)])
+table(or.df$Exited.UI.Flag[!is.na(or.df$Date.Claim.Restarted)])
+
+
+
+```
+
+
+## Add row names
+
+```{r}
+row.names(or.df) <- or.df$PEP.Unique.ID
+
+```
+
+
+#### Adding latest wage data
+
+```{r}
+or.wages2016Q3 <- read.xlsx("Data/PEPP UI Monthly Dataset Wages Only 030116-093016 No Password.xlsx",check.names=TRUE, detectDates=TRUE)
+dim(or.wages2016Q3)
+
+setdiff(names(or.df),names(or.wages2016Q3)) ## names of variables on the main dataset not in the wage update
+setdiff(names(or.wages2016Q3),names(or.df))
+
+stopifnot(all(table(or.wages2016Q3$PEP.Unique.ID)==1))
+row.names(or.wages2016Q3)<-or.wages2016Q3$PEP.Unique.ID
+
+
+table(or.wages2016Q3$PEP.Unique.ID %in% row.names(or.df))
+table(or.wages2016Q3$PEP.Unique.ID %in% or.df$PEP.Unique.ID)
+
+## Update data for people who previously existed in data
+existingids <- or.wages2016Q3$PEP.Unique.ID[or.wages2016Q3$PEP.Unique.ID %in% or.df$PEP.Unique.ID]
+newids <- or.wages2016Q3$PEP.Unique.ID[!(or.wages2016Q3$PEP.Unique.ID %in% or.df$PEP.Unique.ID)]
+
+stopifnot(length(existingids)+length(newids)==nrow(or.wages2016Q3))
+
+# Check initial claims dates
+range(or.wages2016Q3$Initial.Claim.Entered.Date)
+stopifnot(all.equal(or.df[existingids,"Initial.Claim.Entered.Date"],or.wages2016Q3[existingids,"Initial.Claim.Entered.Date"]))
+stopifnot(all.equal(or.df[existingids,"Date.Claiming.Stopped"],or.wages2016Q3[existingids,"Date.Claiming.Stopped"]))
+
+all.equal(or.df[existingids,],or.wages2016Q3[existingids,])
+
+
+or.df[existingids,]<-or.wages2016Q3[existingids,]
+# Add new cases
+or.df <- rbind(or.df,or.wages2016Q3[newids,])
+
+stopifnot(all(table(or.df.TOTAL$PEP.Unique.ID)==1))
+
+```
+
+## Recode variables
+
+```{r Recode_Data}
+library(Hmisc)
+#Set class for variables
+or.df$Worker.Profile.Score <- as.numeric(or.df$Worker.Profile.Score)
+or.df$Education.Level <- ordered(or.df$Education.Level,
+				       levels = c("NONE",  "1ST - 9TH GRADE", "10TH - 12TH GRADE",
+						  "HIGH SCHOOL DIPLOMA/GED",
+						  "VOCATIONAL CERTIFICATION/DEGREE",
+						  "POST SECONDARY COURSEWORK", "ASSOCIATES", "BACHELORS",
+						  "MASTERS", "DOCTORATE"))
+
+table(or.df$Employed.Flag, or.df$X277.Field.Office,exclude=c())
+
+# Recode Y / N variables to 1 / 0
+or.df$uiexit <- 0 #set variable to 0
+or.df[or.df$Exited.UI.Flag=="Y","uiexit"] <- 1
+
+or.df$employed <- 0
+or.df[or.df$Employed.Flag=="Y", "employed"] <- 1
+
+or.df$insert <- 0
+or.df[or.df$Received.Insert.Flag=="Y", "insert"] <- 1
+
+or.df$welcome <- 0
+or.df[which(or.df$Welcome.Process.Completed.Flag=="Y"), "welcome"] <- 1
+
+# Rename dates
+or.df$uiexit.date <- or.df$If.Exited..Date.Claim.Ended
+or.df$claim.date <-  or.df$Initial.Claim.Entered.Date
+```
+
+
+# Key Analytic Variables
+
+**Units of randomization are field offices** are in `X277.Field.Office`
+
+### Design/Intervention
+
+Pair random assignment of clusters (paired cluster assignment, individual level outcomes)
+
+```{r}
+or.df$fonum <- or.df$X277.Field.Office
+```
+
+### Outcomes
+
+```{r}
+or.df$plans <- as.numeric(or.df$X..of.PEPP.Plans)
+or.df$wages <- or.df$Amount.of.Wages
+or.df$uiexit.date <- as.Date(or.df$Date.Claiming.Stopped, origin = "1900-01-01")
+or.df$claim.date <-  as.Date(or.df$Initial.Claim.Entered.Date, origin = "1900-01-01")
+start.date <- strptime(c("27.03.2016"), format = "%d.%m.%Y")
+end.date <- strptime(c("30.09.2016"), format = "%d.%m.%Y")
+or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, start.date))
+range(or.df$time.to.exit)
+# 957 have exit dates before intial claims dates before the program began
+sum(or.df$time.to.exit<0)
+summary(or.df$time.to.exit[or.df$time.to.exit<0])
+or.df$month<-month(or.df$Initial.Claim.Entered.Date)
+table(or.df$time.to.exit[or.df$time.to.exit<0],or.df$month[or.df$time.to.exit<0])
+
+```
+
+### Covariates
+
+Variables like race and lowest acceptable age, veteran status, etc.. were
+entered pre-treatment and in ignorance of treatment status during the filling
+out of their online profile.
+
+## Save the files
+
+```{r}
+save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,or.df8,or.df9,or.df10,
+     file="Data/clean/monthlyordat.rda")
+save(or.df, file="Data/clean/or.df.rda")
+```
+

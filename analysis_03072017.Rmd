@@ -1,0 +1,376 @@
+---
+title: "Prelim Analysis/Data Inspection"
+author: "Daniel Shephard, Jake Bowers, Michael DiDomenico"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+      graphics: yes
+      fig_caption: yes
+      fig_height: 4
+      fig_width: 4
+---
+
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+require(knitr)
+opts_chunk$set(tidy=FALSE,     # display code as typed
+	       size="small",    # slightly smaller font for code
+	       echo=FALSE,
+	       results='markup',
+	       strip.white=TRUE,
+	       ## fig.path='figs/fig',
+	       cache=FALSE,
+	       highlight=TRUE,
+	       width.cutoff=132,
+	       size='footnotesize',
+	       out.width='.9\\textwidth',
+	       message=FALSE,
+	       comment=NA)
+
+options(width=132,scipen=8,digits=4)
+```
+
+
+# Overview of the Project
+
+
+## Goal:
+
+Accelerate finding employment and reduce time on unemployment insurance among unemployment insurance clients in Oregon. 
+
+This file executes the analysis of the experiment. It relies on files produced by the `datasetup.Rmd` file.
+
+```{r loadlibs}
+library(lmtest)
+library(sandwich)
+library(car)
+library(NPC)
+library(RItools)
+library(coin)
+library(dplyr)
+```
+
+The two working data files are produced by the `datasetup.Rmd` file.
+
+```{r}
+load("Data/clean/or.df.rda")
+
+load("Data/clean/monthlyordat.rda") ## Contains the month by month data
+```
+
+## Table of welcome conversations by field office
+
+The following table shows the number of welcome conversations conducted at each
+of the field offices in each month. Some of these welcomes come from the month
+by month data pulls. Others come from the updated wages file. The first column
+has the field office labels.
+
+```{r}
+tmp <- sapply(split(or.df,months(or.df$claim.date)),function(dat){ table(dat$fonum) })
+tmp <- tmp[,c("March","April","May","June","July","August","September","October","November","December")]
+```
+
+
+```{r}
+knitr::kable(tmp)
+
+```
+
+
+# The Experiment:
+
+The experiment randomly assigned the new set of procedures to 7 out of the 14
+offices after first grouping the offices into pairs.  Pairs were created by
+both urban, geography, size (number of people who came for UI), and quality of
+staff (judgement of the management in Oregon). Pairs provided by the management
+of the Oregon State program.
+
+```{r Pull_Pairs, results='hide'}
+#----ORIGINAL CODE FOR RANDOMIZATION------
+##pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv"
+pairfilepath <- "Data/Oregon_Pairs_14-Field-Offices_20160111.csv"
+pairs2 <- read.csv(pairfilepath, row.names = 1)
+row.names(pairs2)<-pairs2$fo.num
+pairs2 <- pairs2[order(pairs2$pair), ] #ensure that all pairs are next to each other
+#Random generation of uniform distribution x14, one number per field office
+#The highest number in the pair is allocated to the treatment group
+pairs2$treat <- 0
+set.seed(20160108) #note, ran once with 20150108, but changed to match date
+ran.no <- runif(14)
+for (i in 1:7)
+{
+	if(ran.no[i*2] > ran.no[(i*2)-1])
+	{
+		pairs2[i*2, "treat"] <- 1
+	}
+	else
+	{
+		pairs2[i*2-1, "treat"] <- 1
+	}
+
+}
+
+#Check the frequency of assignment with different seeds to ensure 50% chance
+#Run allocation logic used above through 1000 different seeds
+pair2 <- NA
+pair2 <- as.numeric(pair2)
+for (q in 1:1000) #run 1000 simulations of different seeds
+{
+	set.seed(20160107+q)
+	ran.no <- runif(14)
+	for (i in 1:7) #for a set of 7 pairs with the current seed do the following
+	{
+		if(ran.no[i*2] > ran.no[(i*2)-1]) #if the even number in the pair is greater than the odd number
+		{
+			pair2 <- rbind(pair2, 1) #then give it a treatment value of 1
+		}
+		else
+		{
+			pair2 <- rbind(pair2, 0) #else give the second in the pair a value of 0
+		}
+	}
+}
+treat.probability <- mean(pair2, na.rm=TRUE)
+samp.m1 <- (lm(ui.wks ~ treat, data=pairs2)) #original scores
+samp.m2 <- (lm(tot ~ treat, data=pairs2)) #original scores
+summary(samp.m1)
+summary(samp.m2)
+```
+
+The number of welcomes and average weeks on UI is from 2015 data (Pre Intervention)
+
+```{r pairstable}
+#Write out the new dataset with treatment allocation
+knitr::kable(pairs2[order(pairs2$pair, pairs2$treat), c(1:2, 14, 9, 12, 10)]) #Order by pairs, with control pair office first
+```
+
+### Outcomes
+
+The overall outcomes collected at the individual level within the period
+covered by the data pull included:
+
+ - `welcome` Whether the person had a welcome meeting
+ - `uiexit` Whether the person stopped making unemployement claims for 3 weeks in a row.
+ - `employed` Whether a different company reports wages for the person in a quarter after the quarter they applied for UI
+ - `time.to.exit` The number of days between making the first claim and exiting the program.
+ - `plans` Number of action plans uploaded by an individual in the program
+ - `wages` The wages earned by the person (?average? ?weekly?)
+
+??Why is time.to.exit negative sometimes? (DS: What is the frequency of this? Are they only clustered at the very start of the trial? I could imagine this happening in the March group). And yes, the 'time.to.exit' should represent the number of days between the two dates. (PT: Negative times to exit occur in all months, and are always within 30 days, so perhaps an error in data entry?)
+
+```{r results=FALSE}
+outcomes <- c("welcome","uiexit","employed","time.to.exit","plans","wages")
+summary(or.df[,outcomes])
+aggvars <- c("insert",outcomes)
+```
+
+```{r}
+table(or.df$uiexit,months(or.df$claim.date))
+```
+
+## Employment Center Level Analysis
+
+Because the intervention was randomized at the level of the employment office, we compare outcomes at that level: did offices in the new program display outcomes that differed from the offices operating under the status quo program?
+
+```{r}
+
+## This next creates more columns than I would like
+officedat <- or.df %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf <- as.data.frame(officedat[,c("fonum",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf)<-officedf$fonum
+names(officedf)[names(officedf)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## wages_sum is the number of people with missing wages data
+
+## Check that the calculation of the mean within office is correct by looking at one office
+stopifnot(all.equal(with(or.df,mean(welcome[fonum=="210"])),officedf["210","welcome_mean"]))
+```
+
+
+```{r mergeontreatment}
+## Add treatment assignment info
+officedf$fonum <- as.numeric(officedf$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat <- inner_join(officedf,pairs2,by="fonum")
+wrkdat <- wrkdat[order(wrkdat$pair,wrkdat$treat),]
+row.names(wrkdat) <- as.character(wrkdat$fonum)
+```
+
+
+```{r}
+## Pair-mean center to handle the pairing:
+
+wrkdat$treatMD <- with(wrkdat,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat[,paste(i,"MD",sep="")]<- wrkdat[[nm]] - ave(wrkdat[[nm]],wrkdat$pair)
+}
+knitr::kable(wrkdat) #If this table is too big it could be broken into pieces
+
+## Check the pair centering
+stopifnot(all.equal(wrkdat$welcomeMD[wrkdat$pair=="a"],
+		    with(wrkdat[wrkdat$pair=="a",], welcome_mean - mean(welcome_mean))
+		    ) )
+```
+
+# Office Level Effects
+
+```{r estimates, results='hide'}
+## First, just show two equivalent ways to get the ITT
+welcomeATEa <- lm(welcome_mean~treat+pair,data=wrkdat)
+welcomeATE <- lm(welcomeMD~treatMD,data=wrkdat)
+stopifnot(all.equal(coef(welcomeATEa)[[2]],coef(welcomeATE)[[2]]))
+
+## Next calc the diff of means for all outcomes
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat))[[2]]
+})
+theITTS
+```
+
+
+```{r tests, results='hide'}
+## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
+wrkdat$treatF <- factor(wrkdat$treat,levels=c("1","0"))
+set.seed(20161102)
+welcomeTest <- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat, distribution=approximate(B=5000))
+welcomeTest
+
+## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
+xb1<-xBalance(treat ~ welcome_mean,strata=list(pair=~pair),data=wrkdat,report="all")
+xb1$results
+
+## Now do it for all
+theps <- sapply(aggoutcomes,function(v){
+			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat,distribution=approximate(B=5000))
+			 return(pvalue(results))
+})
+theps
+```
+
+
+We present differences of means below --- they are an unbiased esimtator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests.Because the sample size is so small, we use a randomization-based approach.
+
+```{r}
+cbind(theITTS,theps)
+```
+
+# Test the null of no effects for any outcome
+
+Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
+
+```{r}
+npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults$p.values
+```
+
+# Effects on Those With More Time in the Program?
+
+One idea is that effects of the program might be smaller among those who have
+had little time in the program. So, we might inspect the effects among those
+who have been in the program longer (say, those with `BYE<=201718` (Benefits
+Year End Date of the 18th week of 2017).
+
+First, however, before we divide up the sample in this way, we should see if
+there are differential effects of treatment on BYE. Even if we find that the
+treated and control groups are balanced on this,  if we think that the
+treatment may have a causal effect on this factor, then, below, we may want to
+do a different kind of analysis (i.e. consider BYE as the dose and random
+assignment as the instrument).
+
+```{r byextreat, results="markup"}
+## We are just looking for systematic relationships between BYE and treatment status, so it is ok to make this numeric.
+or.df$BYEN <- as.numeric(or.df$BYE)
+
+tmp <-  or.df %>% group_by(fonum) %>% dplyr::summarise(bye_mean=mean(BYEN))
+wrkdat[as.character(tmp$fonum),"bye_mean"]<-tmp$bye_mean
+byeTest <- oneway_test(bye_mean~treatF | pair,data=wrkdat)
+byeTest
+with(wrkdat,c(mean(bye_mean[treat==1]),mean(bye_mean[treat==0])))
+```
+
+The preceding analysis does not suggest different BYE in the treatment and
+control groups. We now re-do the preceding analysis, but only for the subset of
+respondents who have spent the most time in the program.
+
+
+```{r agg2}
+## This next creates more columns than I would like
+officedat2 <- or.df[or.df$BYE<=201718,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf2 <- as.data.frame(officedat2[,c("fonum",grep("mean",names(officedat2),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf2)<-officedf2$fonum
+names(officedf2)[names(officedf2)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf2$fonum <- as.numeric(officedf2$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat2 <- inner_join(officedf2,pairs2,by="fonum")
+wrkdat2 <- wrkdat2[order(wrkdat2$pair,wrkdat2$treat),]
+row.names(wrkdat2) <- as.character(wrkdat2$fonum)
+```
+
+
+```{r}
+## Pair-mean center to handle the pairing:
+
+wrkdat2$treatMD <- with(wrkdat2,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat2[,paste(i,"MD",sep="")]<- wrkdat2[[nm]] - ave(wrkdat2[[nm]],wrkdat2$pair)
+}
+knitr::kable(wrkdat2) #If this table is too big it could be broken into pieces
+
+## Check the pair centering
+stopifnot(all.equal(wrkdat2$welcomeMD[wrkdat2$pair=="a"],
+		    with(wrkdat2[wrkdat2$pair=="a",], welcome_mean - mean(welcome_mean))
+		    ) )
+```
+
+
+
+```{r estimates2, results='hide'}
+theITTS2 <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat2))[[2]]
+})
+theITTS2
+```
+
+
+```{r tests2, results='hide'}
+## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
+wrkdat2$treatF <- factor(wrkdat2$treat,levels=c("1","0"))
+set.seed(20161102)
+## Now do it for all
+theps2 <- sapply(aggoutcomes,function(v){
+			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat2,distribution=approximate(B=5000))
+			 return(pvalue(results))
+})
+theps2
+```
+
+Here are the estimated ITTs and p-values for the null of no effects among the group that had the most time in the program.
+
+```{r}
+cbind(theITTS2,theps2)
+```
+
+# Test the null of no effects for any outcome
+
+```{r}
+npcresults2 <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults2$p.values[["NPC"]]
+```
+
+Here we see that we can argue against the null of no effects for any outcome
+with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the
+individual p-values here because they are exact (as compared to the
+approximative ones above). The test statistic used here, by default, is
+Student's T.
+
