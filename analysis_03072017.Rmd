@@ -6,8 +6,6 @@ output:
   html_document:
       graphics: yes
       fig_caption: yes
-      fig_height: 4
-      fig_width: 4
 ---
 
 
@@ -27,7 +25,7 @@ opts_chunk$set(tidy=FALSE,     # display code as typed
 	       highlight=TRUE,
 	       width.cutoff=132,
 	       size='footnotesize',
-	       out.width='.9\\textwidth',
+	       #out.width='.9\\textwidth',
 	       message=FALSE,
 	       comment=NA)
 
@@ -52,6 +50,7 @@ library(NPC)
 library(RItools)
 library(coin)
 library(dplyr)
+library(lubridate)
 ```
 
 The two working data files are produced by the `datasetup.Rmd` file.
@@ -263,26 +262,79 @@ cbind(theITTS,theps)
 
 # Test the null of no effects for any outcome
 
-Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly .09. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
 
 ```{r}
 npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
 npcresults$p.values
 ```
 
+Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly `r npcresults$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
+
+# Effects Excluding Those With a Short Time on the Program
+
+```{r,negativeexit,echo=F,results="hide"}
+sum(or.df$time.to.exit<=0)/dim(or.df)[1]
+sum(sort(prop.table(with(or.df[or.df$time.to.exit<=0,],table(time.to.exit))),decreasing = T)[1:5])
+
+officedat_noneg <- or.df[or.df$time.to.exit>=0,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_noneg <- as.data.frame(officedat_noneg[,c("fonum",grep("mean",names(officedat_noneg),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_noneg)<-officedf_noneg$fonum
+names(officedf_noneg)[names(officedf_noneg)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf_noneg$fonum <- as.numeric(officedf_noneg$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_noneg <- inner_join(officedf_noneg,pairs2,by="fonum")
+wrkdat_noneg <- wrkdat_noneg[order(wrkdat_noneg$pair,wrkdat_noneg$treat),]
+row.names(wrkdat_noneg) <- as.character(wrkdat_noneg$fonum)
+
+## Pair-mean center to handle the pairing:
+
+wrkdat_noneg$treatMD <- with(wrkdat_noneg,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_noneg[,paste(i,"MD",sep="")]<- wrkdat_noneg[[nm]] - ave(wrkdat_noneg[[nm]],wrkdat_noneg$pair)
+}
+
+wrkdat_noneg$treatMD <- with(wrkdat_noneg,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_noneg[,paste(i,"MD",sep="")]<- wrkdat_noneg[[nm]] - ave(wrkdat_noneg[[nm]],wrkdat_noneg$pair)
+}
+
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS_noneg <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat_noneg))[[2]]
+})
+wrkdat_noneg$treatF <- factor(wrkdat_noneg$treat,levels=c("1","0"))
+
+theps_noneg <- sapply(aggoutcomes,function(v){
+			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat_noneg,distribution=approximate(B=5000))
+			 return(pvalue(results))
+})
+npcresults <- NPC(wrkdat_noneg,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+
+```
+
+
+A small portion of the cases appear to have "negative" times to exiting the program, (N=`r sum(or.df$time.to.exit<=0)` or `r round(sum(or.df$time.to.exit<=0)/dim(or.df)[1]*100,1)` percent of cases)
+
+Time to exiting the program is calculated by the subtracting participant's initial unemployment claim date from the date they exited the unemployment insurance. An individual is considered to have exited the program after three weeks of not claiming benefits. Thus exit dates are always on Sundays when a new claim period begins, while initial claim date may be any day during the week. In fact nearly `r round(sum(sort(prop.table(with(or.df[or.df$time.to.exit<=0,],table(time.to.exit))),decreasing = T)[1:5])*100,1)` percent of these cases have values implying exit dates within seven days of the claim process, suggesting most of the negative cases are due to disconnect between how claims are processed and exit times are calculated. Still, as a robustness check, we repeat the main analysis, removing participants with negative times to exit. The results are essentially unchanged.
+
+
+```{r}
+cbind(theITTS_noneg,theps_noneg)
+```
+
+
+
 # Effects on Those With More Time in the Program?
 
-One idea is that effects of the program might be smaller among those who have
-had little time in the program. So, we might inspect the effects among those
-who have been in the program longer (say, those with `BYE<=201718` (Benefits
-Year End Date of the 18th week of 2017).
+One idea is that effects of the program might be smaller among those who have had little time in the program. So, we might inspect the effects among those who have been in the program longer (say, those with `BYE<=201718` (Benefits Year End Date of the 18th week of 2017).
 
-First, however, before we divide up the sample in this way, we should see if
-there are differential effects of treatment on BYE. Even if we find that the
-treated and control groups are balanced on this,  if we think that the
-treatment may have a causal effect on this factor, then, below, we may want to
-do a different kind of analysis (i.e. consider BYE as the dose and random
-assignment as the instrument).
+First, however, before we divide up the sample in this way, we should see if there are differential effects of treatment on BYE. Even if we find that the treated and control groups are balanced on this,  if we think that the treatment may have a causal effect on this factor, then, below, we may want to do a different kind of analysis (i.e. consider BYE as the dose and random assignment as the instrument).
 
 ```{r byextreat, results="markup"}
 ## We are just looking for systematic relationships between BYE and treatment status, so it is ok to make this numeric.
@@ -295,9 +347,7 @@ byeTest
 with(wrkdat,c(mean(bye_mean[treat==1]),mean(bye_mean[treat==0])))
 ```
 
-The preceding analysis does not suggest different BYE in the treatment and
-control groups. We now re-do the preceding analysis, but only for the subset of
-respondents who have spent the most time in the program.
+The preceding analysis does not suggest different BYE in the treatment and control groups. We now re-do the preceding analysis, but only for the subset of respondents who have spent the most time in the program.
 
 
 ```{r agg2}
@@ -368,9 +418,79 @@ npcresults2 <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_m
 npcresults2$p.values[["NPC"]]
 ```
 
-Here we see that we can argue against the null of no effects for any outcome
-with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the
-individual p-values here because they are exact (as compared to the
-approximative ones above). The test statistic used here, by default, is
-Student's T.
+Here we see that we fail to argue against the null of no effects for any outcome with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximative ones above). The test statistic used here, by default, is Student's T.
+
+## Separate Effects by Month
+
+```{r monthly}
+# Wrapper Function to calculate by month
+
+monthly_itts<-function(the_month=3){
+    ## This next creates more columns than I would like
+officedat_month <- or.df[month(or.df$claim.date)==the_month,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_month <- as.data.frame(officedat_month[,c("fonum",grep("mean",names(officedat_month),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_month)<-officedf_month$fonum
+names(officedf_month)[names(officedf_month)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf_month$fonum <- as.numeric(officedf_month$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_month <- inner_join(officedf_month,pairs2,by="fonum")
+wrkdat_month <- wrkdat_month[order(wrkdat_month$pair,wrkdat_month$treat),]
+row.names(wrkdat_month) <- as.character(wrkdat_month$fonum)
+
+## Pair-mean center to handle the pairing:
+
+wrkdat_month$treatMD <- with(wrkdat_month,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_month[,paste(i,"MD",sep="")]<- wrkdat_month[[nm]] - ave(wrkdat_month[[nm]],wrkdat_month$pair)
+}
+
+wrkdat_month$treatMD <- with(wrkdat_month,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_month[,paste(i,"MD",sep="")]<- wrkdat_month[[nm]] - ave(wrkdat_month[[nm]],wrkdat_month$pair)
+}
+
+if(the_month>9){outcomes<-outcomes[-6]} # no wage data after september
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS_month <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat_month))[[2]]
+})
+wrkdat_month$treatF <- factor(wrkdat_month$treat,levels=c("1","0"))
+
+theps_month <- sapply(aggoutcomes,function(v){
+			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat_month,distribution=approximate(B=5000))
+			 return(pvalue(results))
+})
+
+return(data.frame(theITTS_month,theps_month,the_month,outcomes))
+}
+
+march_itt<-monthly_itts(the_month=3)
+april_itt<-monthly_itts(the_month=4)
+may_itt<-monthly_itts(the_month=5)
+june_itt<-monthly_itts(the_month=6)
+july_itt<-monthly_itts(the_month=7)
+august_itt<-monthly_itts(the_month=8)
+september_itt<-monthly_itts(the_month=9)
+october_itt<-monthly_itts(the_month=10)
+november_itt<-monthly_itts(the_month=11)
+december_itt<-monthly_itts(the_month=12)
+
+monthly_df<-rbind(march_itt,april_itt,may_itt,june_itt,july_itt,august_itt,september_itt,october_itt,november_itt,december_itt)
+monthly_df$outcomes<-factor(monthly_df$outcomes)
+library(ggplot2)       
+montly_plot<-ggplot(monthly_df,aes(x=the_month,y=theITTS_month))+geom_line()+facet_wrap(~outcomes,scales = "free")+labs(x="Month",y="ITT")
+
+
+```
+
+```{r,results="markup"}
+montly_plot
+```
+
 

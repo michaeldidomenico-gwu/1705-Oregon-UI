@@ -196,14 +196,14 @@ range(or.wages2016Q3$Initial.Claim.Entered.Date)
 stopifnot(all.equal(or.df[existingids,"Initial.Claim.Entered.Date"],or.wages2016Q3[existingids,"Initial.Claim.Entered.Date"]))
 stopifnot(all.equal(or.df[existingids,"Date.Claiming.Stopped"],or.wages2016Q3[existingids,"Date.Claiming.Stopped"]))
 
-all.equal(or.df[existingids,],or.wages2016Q3[existingids,])
+#all.equal(or.df[existingids,],or.wages2016Q3[existingids,])
 
 
 or.df[existingids,]<-or.wages2016Q3[existingids,]
 # Add new cases
 or.df <- rbind(or.df,or.wages2016Q3[newids,])
 
-stopifnot(all(table(or.df.TOTAL$PEP.Unique.ID)==1))
+stopifnot(all(table(or.df$PEP.Unique.ID)==1))
 
 ```
 
@@ -260,9 +260,12 @@ or.df$plans <- as.numeric(or.df$X..of.PEPP.Plans)
 or.df$wages <- or.df$Amount.of.Wages
 or.df$uiexit.date <- as.Date(or.df$Date.Claiming.Stopped, origin = "1900-01-01")
 or.df$claim.date <-  as.Date(or.df$Initial.Claim.Entered.Date, origin = "1900-01-01")
+range(or.df$claim.date)
 start.date <- strptime(c("27.03.2016"), format = "%d.%m.%Y")
-end.date <- strptime(c("30.09.2016"), format = "%d.%m.%Y")
-or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, start.date))
+end.date <- strptime(c("31.12.2016"), format = "%d.%m.%Y")
+#or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, start.date))
+# Time to Exit should be difference between 
+or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, or.df$claim.date))
 range(or.df$time.to.exit)
 # 957 have exit dates before intial claims dates before the program began
 sum(or.df$time.to.exit<0)
