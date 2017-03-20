@@ -76,6 +76,8 @@ tmp <- tmp[,c("March","April","May","June","July","August","September","October"
 
 ```{r}
 knitr::kable(tmp)
+or.df1$Received.Insert.Flag
+or.df.TOTAL$P
 ```
 
 
@@ -166,7 +168,7 @@ summary(or.df.TOTAL[,outcomes])
 aggvars <- c("insert",outcomes)
 ```
 
-``{r}
+```{r}
 table(or.df.TOTAL$uiexit,months(or.df.TOTAL$claim.date))
 ```
 
@@ -263,7 +265,7 @@ Here we see that we can argue against the null of no effects for any outcome wit
 
 ```{r}
 npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
-npcresults$p.values
+npcresults$p.values["NPC"]
 ```
 
 # Effects on Those With More Time in the Program?

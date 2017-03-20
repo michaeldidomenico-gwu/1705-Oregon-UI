@@ -488,7 +488,7 @@ $(document).ready(function () {
 <p>The overall outcomes collected at the individual level within the period covered by the data pull included:</p>
 <ul>
 <li><code>welcome</code> Whether the person had a welcome meeting</li>
-<li><code>uiexit</code> Whether the person stopped making unemployement claims for 3 weeks in a row.</li>
+<li><code>uiexit</code> Whether the person stopped making unemployment claims for 3 weeks in a row.</li>
 <li><code>employed</code> Whether a different company reports wages for the person in a quarter after the quarter they applied for UI</li>
 <li><code>time.to.exit</code> The number of days between making the first claim and exiting the program.</li>
 <li><code>plans</code> Number of action plans uploaded by an individual in the program</li>
@@ -1031,7 +1031,7 @@ $(document).ready(function () {
 </div>
 <div id="office-level-effects" class="section level1">
 <h1>Office Level Effects</h1>
-<p>We present differences of means below — they are an unbiased esimtator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests. Because the sample size is so small, we use a randomization-based approach. In short, the intervention appeared effective at increasing the number of plans completed, but did not appear influence any of the remaining outcomes.</p>
+<p>We present differences of means below — they are an unbiased estimator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests. Because the sample size is so small, we use a randomization-based approach. In short, the intervention appeared effective at increasing the number of plans completed, but did not appear influence any of the remaining outcomes.</p>
 <pre><code>                   theITTS  theps
 welcomeMD         0.017988 0.7080
 uiexitMD          0.009115 0.6214
@@ -1044,35 +1044,64 @@ wagesMD        -149.612271 0.5248</code></pre>
 <h1>Test the null of no effects for any outcome</h1>
 <pre><code>
 Number of observations deleted due to missingness: 0 </code></pre>
-<pre><code>     welcome_mean       uiexit_mean     employed_mean time.to.exit_mean        plans_mean        wages_mean               NPC 
-          0.71875           0.62500           0.62500           0.93750           0.01562           0.53125           0.50000 </code></pre>
-<p>Here we see that the evidence against the null of no effects for any outcome has a p-value of roughly 0.5. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student’s T test statistic.</p>
+<pre><code>     welcome_mean       uiexit_mean     employed_mean time.to.exit_mean        wages_mean               NPC 
+           0.7188            0.6250            0.6250            0.9375            0.5312            0.9375 </code></pre>
+<p>Here we see that the evidence against the null of no effects for any outcome has a p-value of roughly 0.9375. I also show the individual p-values here because they are exact (as compared to the approximate ones above). Here using the Student’s T test statistic.</p>
+</div>
+<div id="dealing-with-missing-wage-data" class="section level1">
+<h1>Dealing with Missing Wage Data</h1>
+<p>308 participants are flagged as being employed but have no available wage data. The cases are relatively evenly distributed throughout the study, but slighty more common in the later months (54.87 percent are for claims made before October).</p>
+<p>Below we present the main results for employment status and compare them to results that exclude cases with mising wage data or treat those cases as instances of unemployment. In all cases the effect of treatment is marginally negative and non-significant.</p>
+<pre><code>   
+    FALSE  TRUE
+  0     0 33378
+  1  7240   308</code></pre>
+<pre><code>[1] 0.4513</code></pre>
+<pre><code>Warning in names(officedf_emp2) == c(&quot;wages_sum&quot;, &quot;insert_n&quot;): longer object length is not a multiple of shorter object length</code></pre>
+<table>
+<caption>ITT for Treatment on Employment Status</caption>
+<thead>
+<tr class="header">
+<th></th>
+<th align="right">ITT</th>
+<th align="right">p-value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Main Result</td>
+<td align="right">-0.0029</td>
+<td align="right">0.6208</td>
+</tr>
+<tr class="even">
+<td>Removing Cases with Missing Wages</td>
+<td align="right">-0.0040</td>
+<td align="right">0.5430</td>
+</tr>
+<tr class="odd">
+<td>Recoding Missing Wages as Unemployed</td>
+<td align="right">-0.0041</td>
+<td align="right">0.5410</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="effects-excluding-those-with-a-short-time-on-the-program" class="section level1">
 <h1>Effects Excluding Those With a Short Time on the Program</h1>
 <p>A small portion of the cases appear to have “negative” times to exiting the program, (N=957 or 2.3 percent of cases)</p>
 <p>Time to exiting the program is calculated by the subtracting participant’s initial unemployment claim date from the date they exited the unemployment insurance. An individual is considered to have exited the program after three weeks of not claiming benefits. Thus exit dates are always on Sundays when a new claim period begins, while initial claim date may be any day during the week. In fact nearly 87.6 percent of these cases have values implying exit dates within seven days of the claim process, suggesting most of the negative cases are due to disconnect between how claims are processed and exit times are calculated. Still, as a robustness check, we repeat the main analysis, removing participants with negative times to exit. The results are essentially unchanged.</p>
 <pre><code>               theITTS_noneg theps_noneg
-welcomeMD           0.018493      0.6912
-uiexitMD            0.009677      0.5924
-employedMD         -0.002099      0.7438
-time.to.exitMD     -0.233387      0.8250
-plansMD             0.617432      0.0132
-wagesMD          -143.680025      0.5190</code></pre>
+welcomeMD           0.018493      0.6858
+uiexitMD            0.009677      0.5932
+employedMD         -0.002099      0.7520
+time.to.exitMD     -0.233387      0.8296
+plansMD             0.617432      0.0152
+wagesMD          -143.680025      0.5422</code></pre>
 </div>
 <div id="effects-on-those-with-more-time-in-the-program" class="section level1">
 <h1>Effects on Those With More Time in the Program?</h1>
-<p>One idea is that effects of the program might be smaller among those who have had little time in the program. So, we might inspect the effects among those who have been in the program longer (say, those with <code>BYE&lt;=201718</code> (Benefits Year End Date of the 18th week of 2017).</p>
-<p>First, however, before we divide up the sample in this way, we should see if there are differential effects of treatment on BYE. Even if we find that the treated and control groups are balanced on this, if we think that the treatment may have a causal effect on this factor, then, below, we may want to do a different kind of analysis (i.e. consider BYE as the dose and random assignment as the instrument).</p>
-<pre><code>
-    Asymptotic Two-Sample Fisher-Pitman Permutation Test
-
-data:  bye_mean by treatF (1, 0) 
-     stratified by pair
-Z = 0.31, p-value = 0.8
-alternative hypothesis: true mu is not equal to 0</code></pre>
-<pre><code>[1] 201732 201732</code></pre>
-<p>The preceding analysis does not suggest different BYE in the treatment and control groups. We now re-do the preceding analysis, but only for the subset of respondents who have spent the most time in the program.</p>
+<p>We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016, (<code>N= r dim(or.df[or.df$claim.date&lt;=ymd(&quot;2016-06-30&quot;),] )[1])</code></p>
+<pre><code>[1] 14773</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -1115,14 +1144,14 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td>210</td>
 <td align="right">210</td>
 <td align="right">0.0000</td>
-<td align="right">0.7081</td>
-<td align="right">0.7584</td>
-<td align="right">0.3254</td>
-<td align="right">152.1</td>
-<td align="right">0.0032</td>
-<td align="right">2756</td>
-<td align="right">1058</td>
-<td align="right">1552</td>
+<td align="right">0.7163</td>
+<td align="right">0.7740</td>
+<td align="right">0.3032</td>
+<td align="right">141.1</td>
+<td align="right">0.0025</td>
+<td align="right">2731</td>
+<td align="right">1698</td>
+<td align="right">2411</td>
 <td align="right">210</td>
 <td align="left">Salem</td>
 <td align="right">540</td>
@@ -1138,25 +1167,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">-0.5</td>
-<td align="right">0.0026</td>
-<td align="right">0.0086</td>
-<td align="right">0.0317</td>
-<td align="right">-2.5803</td>
-<td align="right">-0.2658</td>
-<td align="right">-137.85</td>
+<td align="right">0.0020</td>
+<td align="right">0.0046</td>
+<td align="right">0.0207</td>
+<td align="right">-0.3814</td>
+<td align="right">-0.2939</td>
+<td align="right">-191.88</td>
 </tr>
 <tr class="even">
 <td>310</td>
 <td align="right">310</td>
-<td align="right">0.5923</td>
-<td align="right">0.7030</td>
-<td align="right">0.7411</td>
-<td align="right">0.2619</td>
-<td align="right">157.3</td>
-<td align="right">0.5348</td>
-<td align="right">3031</td>
-<td align="right">1224</td>
-<td align="right">1653</td>
+<td align="right">0.7201</td>
+<td align="right">0.7124</td>
+<td align="right">0.7647</td>
+<td align="right">0.2618</td>
+<td align="right">141.9</td>
+<td align="right">0.5903</td>
+<td align="right">3115</td>
+<td align="right">2013</td>
+<td align="right">2712</td>
 <td align="right">310</td>
 <td align="left">Eugene</td>
 <td align="right">619</td>
@@ -1172,25 +1201,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">1</td>
 <td align="right">1</td>
 <td align="right">0.5</td>
-<td align="right">-0.0026</td>
-<td align="right">-0.0086</td>
-<td align="right">-0.0317</td>
-<td align="right">2.5803</td>
-<td align="right">0.2658</td>
-<td align="right">137.85</td>
+<td align="right">-0.0020</td>
+<td align="right">-0.0046</td>
+<td align="right">-0.0207</td>
+<td align="right">0.3814</td>
+<td align="right">0.2939</td>
+<td align="right">191.88</td>
 </tr>
 <tr class="odd">
 <td>820</td>
 <td align="right">820</td>
 <td align="right">0.0000</td>
-<td align="right">0.7581</td>
-<td align="right">0.6344</td>
-<td align="right">0.2366</td>
-<td align="right">172.9</td>
-<td align="right">0.0161</td>
-<td align="right">2587</td>
-<td align="right">144</td>
-<td align="right">186</td>
+<td align="right">0.7638</td>
+<td align="right">0.6614</td>
+<td align="right">0.2598</td>
+<td align="right">160.1</td>
+<td align="right">0.0118</td>
+<td align="right">2492</td>
+<td align="right">190</td>
+<td align="right">254</td>
 <td align="right">820</td>
 <td align="left">La Grande</td>
 <td align="right">74</td>
@@ -1206,25 +1235,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">1</td>
 <td align="right">0</td>
 <td align="right">-0.5</td>
-<td align="right">0.0147</td>
-<td align="right">-0.0542</td>
-<td align="right">-0.0246</td>
-<td align="right">7.8164</td>
-<td align="right">-0.2776</td>
-<td align="right">354.15</td>
+<td align="right">0.0587</td>
+<td align="right">-0.0279</td>
+<td align="right">-0.0165</td>
+<td align="right">5.3041</td>
+<td align="right">-0.2719</td>
+<td align="right">336.17</td>
 </tr>
 <tr class="even">
 <td>920</td>
 <td align="right">920</td>
-<td align="right">0.5571</td>
-<td align="right">0.7286</td>
-<td align="right">0.7429</td>
-<td align="right">0.2857</td>
-<td align="right">157.3</td>
-<td align="right">0.5714</td>
-<td align="right">1879</td>
-<td align="right">51</td>
-<td align="right">70</td>
+<td align="right">0.6364</td>
+<td align="right">0.6465</td>
+<td align="right">0.7172</td>
+<td align="right">0.2929</td>
+<td align="right">149.5</td>
+<td align="right">0.5556</td>
+<td align="right">1820</td>
+<td align="right">71</td>
+<td align="right">99</td>
 <td align="right">920</td>
 <td align="left">Baker City</td>
 <td align="right">44</td>
@@ -1240,25 +1269,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">0</td>
 <td align="right">1</td>
 <td align="right">0.5</td>
-<td align="right">-0.0147</td>
-<td align="right">0.0542</td>
-<td align="right">0.0246</td>
-<td align="right">-7.8164</td>
-<td align="right">0.2776</td>
-<td align="right">-354.15</td>
+<td align="right">-0.0587</td>
+<td align="right">0.0279</td>
+<td align="right">0.0165</td>
+<td align="right">-5.3041</td>
+<td align="right">0.2719</td>
+<td align="right">-336.17</td>
 </tr>
 <tr class="odd">
 <td>250</td>
 <td align="right">250</td>
 <td align="right">0.0000</td>
-<td align="right">0.6702</td>
-<td align="right">0.7120</td>
-<td align="right">0.2670</td>
-<td align="right">152.0</td>
-<td align="right">0.0052</td>
-<td align="right">2440</td>
-<td align="right">140</td>
-<td align="right">191</td>
+<td align="right">0.6399</td>
+<td align="right">0.7395</td>
+<td align="right">0.2572</td>
+<td align="right">137.2</td>
+<td align="right">0.0064</td>
+<td align="right">2598</td>
+<td align="right">232</td>
+<td align="right">311</td>
 <td align="right">250</td>
 <td align="left">Newport</td>
 <td align="right">65</td>
@@ -1274,25 +1303,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">-0.5</td>
-<td align="right">0.0178</td>
-<td align="right">0.0181</td>
-<td align="right">0.0025</td>
-<td align="right">-11.9073</td>
-<td align="right">-0.2250</td>
-<td align="right">-10.44</td>
+<td align="right">-0.0043</td>
+<td align="right">0.0183</td>
+<td align="right">-0.0100</td>
+<td align="right">-10.0400</td>
+<td align="right">-0.2468</td>
+<td align="right">-75.82</td>
 </tr>
 <tr class="even">
 <td>150</td>
 <td align="right">150</td>
-<td align="right">0.6069</td>
-<td align="right">0.6345</td>
-<td align="right">0.6759</td>
-<td align="right">0.2621</td>
-<td align="right">175.9</td>
-<td align="right">0.4552</td>
-<td align="right">2461</td>
-<td align="right">108</td>
-<td align="right">145</td>
+<td align="right">0.7079</td>
+<td align="right">0.6485</td>
+<td align="right">0.7030</td>
+<td align="right">0.2772</td>
+<td align="right">157.2</td>
+<td align="right">0.5000</td>
+<td align="right">2749</td>
+<td align="right">149</td>
+<td align="right">202</td>
 <td align="right">150</td>
 <td align="left">Astoria</td>
 <td align="right">60</td>
@@ -1308,25 +1337,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">1</td>
 <td align="right">1</td>
 <td align="right">0.5</td>
-<td align="right">-0.0178</td>
-<td align="right">-0.0181</td>
-<td align="right">-0.0025</td>
-<td align="right">11.9073</td>
-<td align="right">0.2250</td>
-<td align="right">10.44</td>
+<td align="right">0.0043</td>
+<td align="right">-0.0183</td>
+<td align="right">0.0100</td>
+<td align="right">10.0400</td>
+<td align="right">0.2468</td>
+<td align="right">75.82</td>
 </tr>
 <tr class="odd">
 <td>102</td>
 <td align="right">102</td>
 <td align="right">0.0000</td>
-<td align="right">0.6140</td>
-<td align="right">0.7288</td>
-<td align="right">0.2934</td>
-<td align="right">158.9</td>
-<td align="right">0.0100</td>
-<td align="right">3156</td>
-<td align="right">1291</td>
-<td align="right">1803</td>
+<td align="right">0.6101</td>
+<td align="right">0.7489</td>
+<td align="right">0.2892</td>
+<td align="right">144.8</td>
+<td align="right">0.0087</td>
+<td align="right">3339</td>
+<td align="right">1979</td>
+<td align="right">2752</td>
 <td align="right">102</td>
 <td align="left">Gresham</td>
 <td align="right">637</td>
@@ -1342,25 +1371,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">-0.5</td>
-<td align="right">-0.0049</td>
-<td align="right">-0.0248</td>
-<td align="right">0.0060</td>
-<td align="right">4.2367</td>
-<td align="right">-0.2107</td>
-<td align="right">-450.36</td>
+<td align="right">-0.0064</td>
+<td align="right">-0.0157</td>
+<td align="right">0.0013</td>
+<td align="right">1.9855</td>
+<td align="right">-0.2318</td>
+<td align="right">-381.06</td>
 </tr>
 <tr class="even">
 <td>180</td>
 <td align="right">180</td>
-<td align="right">0.6147</td>
-<td align="right">0.6238</td>
-<td align="right">0.7784</td>
-<td align="right">0.2814</td>
-<td align="right">150.4</td>
-<td align="right">0.4314</td>
-<td align="right">4056</td>
-<td align="right">1114</td>
-<td align="right">1539</td>
+<td align="right">0.7155</td>
+<td align="right">0.6229</td>
+<td align="right">0.7803</td>
+<td align="right">0.2866</td>
+<td align="right">140.8</td>
+<td align="right">0.4722</td>
+<td align="right">4101</td>
+<td align="right">1708</td>
+<td align="right">2376</td>
 <td align="right">180</td>
 <td align="left">Oregon City</td>
 <td align="right">479</td>
@@ -1376,25 +1405,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">1</td>
 <td align="right">1</td>
 <td align="right">0.5</td>
-<td align="right">0.0049</td>
-<td align="right">0.0248</td>
-<td align="right">-0.0060</td>
-<td align="right">-4.2367</td>
-<td align="right">0.2107</td>
-<td align="right">450.36</td>
+<td align="right">0.0064</td>
+<td align="right">0.0157</td>
+<td align="right">-0.0013</td>
+<td align="right">-1.9855</td>
+<td align="right">0.2318</td>
+<td align="right">381.06</td>
 </tr>
 <tr class="odd">
 <td>270</td>
 <td align="right">270</td>
 <td align="right">0.0000</td>
-<td align="right">0.7241</td>
-<td align="right">0.7611</td>
-<td align="right">0.3167</td>
-<td align="right">150.3</td>
-<td align="right">0.0111</td>
-<td align="right">3030</td>
-<td align="right">373</td>
-<td align="right">540</td>
+<td align="right">0.7239</td>
+<td align="right">0.7549</td>
+<td align="right">0.2990</td>
+<td align="right">140.8</td>
+<td align="right">0.0115</td>
+<td align="right">3103</td>
+<td align="right">617</td>
+<td align="right">873</td>
 <td align="right">270</td>
 <td align="left">Albany</td>
 <td align="right">206</td>
@@ -1410,25 +1439,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">1</td>
 <td align="right">0</td>
 <td align="right">-0.5</td>
-<td align="right">0.0143</td>
-<td align="right">0.0125</td>
-<td align="right">0.0235</td>
-<td align="right">-4.8160</td>
-<td align="right">-0.2931</td>
-<td align="right">440.41</td>
+<td align="right">0.0096</td>
+<td align="right">0.0090</td>
+<td align="right">0.0191</td>
+<td align="right">-4.0401</td>
+<td align="right">-0.3172</td>
+<td align="right">474.61</td>
 </tr>
 <tr class="even">
 <td>320</td>
 <td align="right">320</td>
-<td align="right">0.6012</td>
-<td align="right">0.6956</td>
-<td align="right">0.7360</td>
-<td align="right">0.2697</td>
-<td align="right">159.9</td>
-<td align="right">0.5973</td>
-<td align="right">2149</td>
-<td align="right">382</td>
-<td align="right">519</td>
+<td align="right">0.7122</td>
+<td align="right">0.7048</td>
+<td align="right">0.7368</td>
+<td align="right">0.2608</td>
+<td align="right">148.8</td>
+<td align="right">0.6458</td>
+<td align="right">2154</td>
+<td align="right">608</td>
+<td align="right">813</td>
 <td align="right">320</td>
 <td align="left">Roseburg</td>
 <td align="right">185</td>
@@ -1444,25 +1473,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">0</td>
 <td align="right">1</td>
 <td align="right">0.5</td>
-<td align="right">-0.0143</td>
-<td align="right">-0.0125</td>
-<td align="right">-0.0235</td>
-<td align="right">4.8160</td>
-<td align="right">0.2931</td>
-<td align="right">-440.41</td>
+<td align="right">-0.0096</td>
+<td align="right">-0.0090</td>
+<td align="right">-0.0191</td>
+<td align="right">4.0401</td>
+<td align="right">0.3172</td>
+<td align="right">-474.61</td>
 </tr>
 <tr class="odd">
 <td>724</td>
 <td align="right">724</td>
 <td align="right">0.0000</td>
-<td align="right">0.5058</td>
-<td align="right">0.7066</td>
-<td align="right">0.2568</td>
-<td align="right">159.4</td>
-<td align="right">0.0019</td>
-<td align="right">2585</td>
-<td align="right">386</td>
-<td align="right">518</td>
+<td align="right">0.4786</td>
+<td align="right">0.7265</td>
+<td align="right">0.2547</td>
+<td align="right">147.4</td>
+<td align="right">0.0013</td>
+<td align="right">2748</td>
+<td align="right">560</td>
+<td align="right">746</td>
 <td align="right">724</td>
 <td align="left">Redmond</td>
 <td align="right">121</td>
@@ -1478,25 +1507,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">1</td>
 <td align="right">0</td>
 <td align="right">-0.5</td>
-<td align="right">-0.1152</td>
-<td align="right">-0.0134</td>
-<td align="right">0.0095</td>
-<td align="right">-0.5027</td>
-<td align="right">-0.2614</td>
-<td align="right">72.99</td>
+<td align="right">-0.1267</td>
+<td align="right">-0.0147</td>
+<td align="right">-0.0048</td>
+<td align="right">1.2937</td>
+<td align="right">-0.2600</td>
+<td align="right">147.97</td>
 </tr>
 <tr class="even">
 <td>710</td>
 <td align="right">710</td>
-<td align="right">0.5391</td>
-<td align="right">0.7362</td>
-<td align="right">0.7333</td>
-<td align="right">0.2377</td>
-<td align="right">160.4</td>
-<td align="right">0.5246</td>
-<td align="right">2439</td>
-<td align="right">266</td>
-<td align="right">345</td>
+<td align="right">0.6747</td>
+<td align="right">0.7320</td>
+<td align="right">0.7560</td>
+<td align="right">0.2643</td>
+<td align="right">144.9</td>
+<td align="right">0.5213</td>
+<td align="right">2452</td>
+<td align="right">402</td>
+<td align="right">541</td>
 <td align="right">710</td>
 <td align="left">Klamath Falls</td>
 <td align="right">141</td>
@@ -1512,25 +1541,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">1</td>
 <td align="right">1</td>
 <td align="right">0.5</td>
-<td align="right">0.1152</td>
-<td align="right">0.0134</td>
-<td align="right">-0.0095</td>
-<td align="right">0.5027</td>
-<td align="right">0.2614</td>
-<td align="right">-72.99</td>
+<td align="right">0.1267</td>
+<td align="right">0.0147</td>
+<td align="right">0.0048</td>
+<td align="right">-1.2937</td>
+<td align="right">0.2600</td>
+<td align="right">-147.97</td>
 </tr>
 <tr class="odd">
 <td>810</td>
 <td align="right">810</td>
 <td align="right">0.0000</td>
-<td align="right">0.6845</td>
-<td align="right">0.6905</td>
-<td align="right">0.2202</td>
-<td align="right">173.6</td>
+<td align="right">0.6993</td>
+<td align="right">0.7246</td>
+<td align="right">0.2391</td>
+<td align="right">147.0</td>
 <td align="right">0.0000</td>
-<td align="right">2738</td>
-<td align="right">131</td>
-<td align="right">168</td>
+<td align="right">2855</td>
+<td align="right">210</td>
+<td align="right">276</td>
 <td align="right">810</td>
 <td align="left">Pendleton</td>
 <td align="right">71</td>
@@ -1546,25 +1575,25 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">-0.5</td>
-<td align="right">0.0151</td>
-<td align="right">-0.0169</td>
-<td align="right">-0.0380</td>
-<td align="right">4.9479</td>
-<td align="right">-0.2984</td>
-<td align="right">-33.34</td>
+<td align="right">0.0192</td>
+<td align="right">-0.0161</td>
+<td align="right">-0.0193</td>
+<td align="right">2.5350</td>
+<td align="right">-0.3108</td>
+<td align="right">199.32</td>
 </tr>
 <tr class="even">
 <td>811</td>
 <td align="right">811</td>
-<td align="right">0.5844</td>
-<td align="right">0.6543</td>
-<td align="right">0.7243</td>
-<td align="right">0.2963</td>
-<td align="right">163.7</td>
-<td align="right">0.5967</td>
-<td align="right">2804</td>
-<td align="right">173</td>
-<td align="right">243</td>
+<td align="right">0.7101</td>
+<td align="right">0.6609</td>
+<td align="right">0.7568</td>
+<td align="right">0.2776</td>
+<td align="right">142.0</td>
+<td align="right">0.6216</td>
+<td align="right">2456</td>
+<td align="right">296</td>
+<td align="right">407</td>
 <td align="right">811</td>
 <td align="left">Hermiston</td>
 <td align="right">94</td>
@@ -1580,30 +1609,30 @@ alternative hypothesis: true mu is not equal to 0</code></pre>
 <td align="right">0</td>
 <td align="right">1</td>
 <td align="right">0.5</td>
-<td align="right">-0.0151</td>
-<td align="right">0.0169</td>
-<td align="right">0.0380</td>
-<td align="right">-4.9479</td>
-<td align="right">0.2984</td>
-<td align="right">33.34</td>
+<td align="right">-0.0192</td>
+<td align="right">0.0161</td>
+<td align="right">0.0193</td>
+<td align="right">-2.5350</td>
+<td align="right">0.3108</td>
+<td align="right">-199.32</td>
 </tr>
 </tbody>
 </table>
 <p>Here are the estimated ITTs and p-values for the null of no effects among the group that had the most time in the program.</p>
-<pre><code>                theITTS2 theps2
-welcomeMD        0.01589 0.9660
-uiexitMD         0.02001 0.3820
-employedMD      -0.00303 0.8444
-time.to.exitMD   0.80152 0.8906
-plansMD          0.52341 0.0156
-wagesMD        -67.30665 0.8702</code></pre>
+<pre><code>                  theITTS2 theps2
+welcomeMD         0.013736 0.8846
+uiexitMD          0.012123 0.3774
+employedMD        0.002714 0.8258
+time.to.exitMD    0.955210 0.8370
+plansMD           0.552072 0.0156
+wagesMD        -145.515675 0.5354</code></pre>
 </div>
 <div id="test-the-null-of-no-effects-for-any-outcome-1" class="section level1">
 <h1>Test the null of no effects for any outcome</h1>
 <pre><code>
 Number of observations deleted due to missingness: 0 </code></pre>
-<pre><code>[1] 0.5938</code></pre>
-<p>Here we see that the evidence against the null of no effects for any outcome with a p-value of roughly 0.5938. I also show the individual p-values here because they are exact (as compared to the approximative ones above). The test statistic used here, by default, is Student’s T.</p>
+<pre><code>[1] 0.9531</code></pre>
+<p>Here we see that the evidence against the null of no effects for any outcome with a p-value of roughly 0.9531. I also show the individual p-values here because they are exact (as compared to the approximate ones above). The test statistic used here, by default, is Student’s T.</p>
 <div id="separate-effects-by-month" class="section level2">
 <h2>Separate Effects by Month</h2>
 <p>Below I show the estimated effects by month for each of the six outcomes.</p>

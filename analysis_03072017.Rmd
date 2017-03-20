@@ -264,11 +264,87 @@ cbind(theITTS,theps)
 
 
 ```{r}
-npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes[-5],"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
 npcresults$p.values
 ```
 
 Here we see that the evidence against the null of no effects for any outcome has a p-value of roughly `r npcresults$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximate ones above). Here using the Student's T test statistic.
+
+# Dealing with Missing Wage Data
+
+`r table(or.df$employed,is.na(or.df$wages),useNA="ifany")[2,2]` participants are flagged as being employed but have no available wage data. The cases are relatively evenly distributed throughout the study, but slighty more common in the later months (`r round((1-sum(prop.table(table(month(or.df$claim.date[or.df$employed==1&is.na(or.df$wages)==T])))[8:10]))*100,2)` percent are for claims made before October).
+
+Below we present the main results for employment status and compare them to results that exclude cases with mising wage data or treat those cases as instances of unemployment. In all cases the effect of treatment is marginally negative and non-significant.
+
+
+```{r}
+
+# 308 respondens coded as employed but missing wage data
+table(or.df$employed,is.na(or.df$wages),useNA="ifany")
+
+# Roughly evenly distributed through out the sample.
+sum(prop.table(table(month(or.df$claim.date[or.df$employed==1&is.na(or.df$wages)==T])))[8:10])
+
+# Exclude cases who said they were employed but had no wage data
+officedat_emp <- or.df[!or.df$employed==1&is.na(or.df$wages)==T|
+                           or.df$employed==1&!is.na(or.df$wages)==T
+                       ,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_emp <- as.data.frame(officedat_emp[,c("fonum",grep("mean",names(officedat_emp),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_emp)<-officedf_emp$fonum
+names(officedf_emp)[names(officedf_emp)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+officedf_emp$fonum <- as.numeric(officedf_emp$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_emp <- inner_join(officedf_emp,pairs2,by="fonum")
+wrkdat_emp <- wrkdat_emp[order(wrkdat_emp$pair,wrkdat_emp$treat),]
+row.names(wrkdat_emp) <- as.character(wrkdat_emp$fonum)
+wrkdat_emp$treatMD <- with(wrkdat_emp,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_emp[,paste(i,"MD",sep="")]<- wrkdat_emp[[nm]] - ave(wrkdat_emp[[nm]],wrkdat_emp$pair)
+}
+
+employedATE <- coef(lm(employedMD~treatMD,data=wrkdat_emp))[2]
+wrkdat_emp$treatF <- factor(wrkdat_emp$treat,levels=c("1","0"))
+employedATE_pval<-pvalue(oneway_test(employed_mean~treatF|pair,data=wrkdat_emp,distribution=approximate(B=5000)))
+
+# Create alternate employment flag
+or.df$employed_alt<-or.df$employed
+# Treat missing wage cases as unemployed
+or.df$employed_alt[or.df$employed==1&is.na(or.df$wages)==T]<-0
+
+officedat_emp2 <- or.df %>% group_by(fonum) %>% summarize_at(c(aggvars,"employed_alt"),.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_emp2 <- as.data.frame(officedat_emp2[,c("fonum",grep("mean",names(officedat_emp2),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_emp2)<-officedf_emp2$fonum
+names(officedf_emp2)[names(officedf_emp2)==c("wages_sum","insert_n")] <- c("missingwage","N")
+
+officedf_emp2$fonum <- as.numeric(officedf_emp2$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_emp2 <- inner_join(officedf_emp2,pairs2,by="fonum")
+wrkdat_emp2 <- wrkdat_emp2[order(wrkdat_emp2$pair,wrkdat_emp2$treat),]
+row.names(wrkdat_emp2) <- as.character(wrkdat_emp2$fonum)
+wrkdat_emp2$treatMD <- with(wrkdat_emp2,treat - ave(treat,pair))
+for(i in c(outcomes,"employed_alt")){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_emp2[,paste(i,"MD",sep="")]<- wrkdat_emp2[[nm]] - ave(wrkdat_emp2[[nm]],wrkdat_emp2$pair)
+}
+
+employedATEalt <- coef(lm(employed_altMD~treatMD,data=wrkdat_emp2))[2]
+wrkdat_emp2$treatF <- factor(wrkdat_emp2$treat,levels=c("1","0"))
+employedATE_pval_alt<-pvalue(oneway_test(employed_alt_mean~treatF|pair,data=wrkdat_emp2,distribution=approximate(B=5000)))
+
+
+employed_tab<-cbind(rbind(theITTS[3],employedATE,employedATEalt),rbind(theps[3],employedATE_pval,employedATE_pval_alt))
+rownames(employed_tab)<-c("Main Result","Removing Cases with Missing Wages","Recoding Missing Wages as Unemployed")
+colnames(employed_tab)<-c("ITT","p-value")
+```
+
+```{r,results="markdown"}
+kable(employed_tab,caption = "ITT for Treatment on Employment Status")
+```
+
 
 # Effects Excluding Those With a Short Time on the Program
 
@@ -314,7 +390,8 @@ theps_noneg <- sapply(aggoutcomes,function(v){
 			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat_noneg,distribution=approximate(B=5000))
 			 return(pvalue(results))
 })
-npcresults <- NPC(wrkdat_noneg,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+
+npcresults_nonneg <- NPC(wrkdat_noneg,tr.var="treat",tr.label="1",y.vars=paste(outcomes[-5],"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
 
 ```
 
@@ -332,27 +409,14 @@ cbind(theITTS_noneg,theps_noneg)
 
 # Effects on Those With More Time in the Program?
 
-One idea is that effects of the program might be smaller among those who have had little time in the program. So, we might inspect the effects among those who have been in the program longer (say, those with `BYE<=201718` (Benefits Year End Date of the 18th week of 2017).
-
-First, however, before we divide up the sample in this way, we should see if there are differential effects of treatment on BYE. Even if we find that the treated and control groups are balanced on this,  if we think that the treatment may have a causal effect on this factor, then, below, we may want to do a different kind of analysis (i.e. consider BYE as the dose and random assignment as the instrument).
-
-```{r byextreat, results="markup"}
-## We are just looking for systematic relationships between BYE and treatment status, so it is ok to make this numeric.
-or.df$BYEN <- as.numeric(or.df$BYE)
-
-tmp <-  or.df %>% group_by(fonum) %>% dplyr::summarise(bye_mean=mean(BYEN))
-wrkdat[as.character(tmp$fonum),"bye_mean"]<-tmp$bye_mean
-byeTest <- oneway_test(bye_mean~treatF | pair,data=wrkdat)
-byeTest
-with(wrkdat,c(mean(bye_mean[treat==1]),mean(bye_mean[treat==0])))
-```
-
-The preceding analysis does not suggest different BYE in the treatment and control groups. We now re-do the preceding analysis, but only for the subset of respondents who have spent the most time in the program.
+We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016,  (N=`r dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1])`
 
 
 ```{r agg2}
+
+dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1]
 ## This next creates more columns than I would like
-officedat2 <- or.df[or.df$BYE<=201718,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedat2 <- or.df[or.df$claim.date<=ymd("2016-06-30"),] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
 officedf2 <- as.data.frame(officedat2[,c("fonum",grep("mean",names(officedat2),value=TRUE),"wages_sum","insert_n")])
 row.names(officedf2)<-officedf2$fonum
 names(officedf2)[names(officedf2)==c("wages_sum","insert_n")] <- c("missingwage","N")
@@ -397,6 +461,7 @@ theITTS2
 ## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
 wrkdat2$treatF <- factor(wrkdat2$treat,levels=c("1","0"))
 set.seed(20161102)
+
 ## Now do it for all
 theps2 <- sapply(aggoutcomes,function(v){
 			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat2,distribution=approximate(B=5000))
@@ -414,8 +479,9 @@ cbind(theITTS2,theps2)
 # Test the null of no effects for any outcome
 
 ```{r}
-npcresults2 <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
-npcresults2$p.values[["NPC"]]
+
+npcresults2 <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes[-5],"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults2$p.values
 ```
 
 Here we see that the evidence against the null of no effects for any outcome with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximate ones above). The test statistic used here, by default, is Student's T.
@@ -494,5 +560,4 @@ montly_plot<-ggplot(monthly_df,aes(x=the_month,y=theITTS_month))+geom_line()+fac
 ```{r,results="markup"}
 montly_plot
 ```
-
 
