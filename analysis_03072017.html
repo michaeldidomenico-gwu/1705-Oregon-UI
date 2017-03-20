@@ -1100,7 +1100,7 @@ wagesMD          -143.680025      0.5422</code></pre>
 </div>
 <div id="effects-on-those-with-more-time-in-the-program" class="section level1">
 <h1>Effects on Those With More Time in the Program?</h1>
-<p>We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016, (<code>N= r dim(or.df[or.df$claim.date&lt;=ymd(&quot;2016-06-30&quot;),] )[1])</code></p>
+<p>We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016, (N=14773</p>
 <pre><code>[1] 14773</code></pre>
 <table>
 <thead>
@@ -1631,7 +1631,8 @@ wagesMD        -145.515675 0.5354</code></pre>
 <h1>Test the null of no effects for any outcome</h1>
 <pre><code>
 Number of observations deleted due to missingness: 0 </code></pre>
-<pre><code>[1] 0.9531</code></pre>
+<pre><code>     welcome_mean       uiexit_mean     employed_mean time.to.exit_mean        wages_mean               NPC 
+           0.8906            0.3750            0.8281            0.8281            0.5312            0.9531 </code></pre>
 <p>Here we see that the evidence against the null of no effects for any outcome with a p-value of roughly 0.9531. I also show the individual p-values here because they are exact (as compared to the approximate ones above). The test statistic used here, by default, is Student’s T.</p>
 <div id="separate-effects-by-month" class="section level2">
 <h2>Separate Effects by Month</h2>

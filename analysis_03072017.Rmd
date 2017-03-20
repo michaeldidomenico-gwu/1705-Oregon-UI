@@ -409,7 +409,7 @@ cbind(theITTS_noneg,theps_noneg)
 
 # Effects on Those With More Time in the Program?
 
-We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016,  (N=`r dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1])`
+We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016,  (N=`r dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1]`
 
 
 ```{r agg2}
@@ -552,12 +552,12 @@ december_itt<-monthly_itts(the_month=12)
 monthly_df<-rbind(march_itt,april_itt,may_itt,june_itt,july_itt,august_itt,september_itt,october_itt,november_itt,december_itt)
 monthly_df$outcomes<-factor(monthly_df$outcomes)
 library(ggplot2)       
-montly_plot<-ggplot(monthly_df,aes(x=the_month,y=theITTS_month))+geom_line()+facet_wrap(~outcomes,scales = "free")+labs(x="Month",y="ITT")
+monthly_plot<-ggplot(monthly_df,aes(x=the_month,y=theITTS_month))+geom_line()+facet_wrap(~outcomes,scales = "free")+labs(x="Month",y="ITT")
 
 
 ```
 
 ```{r,results="markup"}
-montly_plot
+monthly_plot
 ```
 
