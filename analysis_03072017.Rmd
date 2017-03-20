@@ -153,7 +153,7 @@ The overall outcomes collected at the individual level within the period
 covered by the data pull included:
 
  - `welcome` Whether the person had a welcome meeting
- - `uiexit` Whether the person stopped making unemployement claims for 3 weeks in a row.
+ - `uiexit` Whether the person stopped making unemployment claims for 3 weeks in a row.
  - `employed` Whether a different company reports wages for the person in a quarter after the quarter they applied for UI
  - `time.to.exit` The number of days between making the first claim and exiting the program.
  - `plans` Number of action plans uploaded by an individual in the program
@@ -254,7 +254,7 @@ theps
 ```
 
 
-We present differences of means below --- they are an unbiased esimtator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests.Because the sample size is so small, we use a randomization-based approach.
+We present differences of means below --- they are an unbiased estimator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests. Because the sample size is so small, we use a randomization-based approach. In short, the intervention appeared effective at increasing the number of plans completed, but did not appear influence any of the remaining outcomes.
 
 ```{r}
 cbind(theITTS,theps)
@@ -268,7 +268,7 @@ npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mea
 npcresults$p.values
 ```
 
-Here we see that we can argue against the null of no effects for any outcome with a p-value of roughly `r npcresults$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximative ones above). Here using the Student's T test statistic.
+Here we see that the evidence against the null of no effects for any outcome has a p-value of roughly `r npcresults$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximate ones above). Here using the Student's T test statistic.
 
 # Effects Excluding Those With a Short Time on the Program
 
@@ -418,9 +418,11 @@ npcresults2 <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_m
 npcresults2$p.values[["NPC"]]
 ```
 
-Here we see that we fail to argue against the null of no effects for any outcome with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximative ones above). The test statistic used here, by default, is Student's T.
+Here we see that the evidence against the null of no effects for any outcome with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximate ones above). The test statistic used here, by default, is Student's T.
 
 ## Separate Effects by Month
+
+Below I show the estimated effects by month for each of the six outcomes.
 
 ```{r monthly}
 # Wrapper Function to calculate by month
