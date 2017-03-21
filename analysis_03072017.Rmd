@@ -176,9 +176,10 @@ table(or.df$uiexit,months(or.df$claim.date))
 Because the intervention was randomized at the level of the employment office, we compare outcomes at that level: did offices in the new program display outcomes that differed from the offices operating under the status quo program?
 
 ```{r}
-
+# Remove Cases after Sept 30, 2016
+or.df<-or.df[or.df$claim.date<=ymd("2016-09-30"),]
 ## This next creates more columns than I would like
-officedat <- or.df %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedat <- or.df[or.df$claim.date<=ymd("2016-09-30"),] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
 officedf <- as.data.frame(officedat[,c("fonum",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
 row.names(officedf)<-officedf$fonum
 names(officedf)[names(officedf)==c("wages_sum","insert_n")] <- c("missingwage","N")
@@ -545,11 +546,11 @@ june_itt<-monthly_itts(the_month=6)
 july_itt<-monthly_itts(the_month=7)
 august_itt<-monthly_itts(the_month=8)
 september_itt<-monthly_itts(the_month=9)
-october_itt<-monthly_itts(the_month=10)
-november_itt<-monthly_itts(the_month=11)
-december_itt<-monthly_itts(the_month=12)
+#october_itt<-monthly_itts(the_month=10)
+#november_itt<-monthly_itts(the_month=11)
+#december_itt<-monthly_itts(the_month=12)
 
-monthly_df<-rbind(march_itt,april_itt,may_itt,june_itt,july_itt,august_itt,september_itt,october_itt,november_itt,december_itt)
+monthly_df<-rbind(march_itt,april_itt,may_itt,june_itt,july_itt,august_itt,september_itt)
 monthly_df$outcomes<-factor(monthly_df$outcomes)
 library(ggplot2)       
 monthly_plot<-ggplot(monthly_df,aes(x=the_month,y=theITTS_month))+geom_line()+facet_wrap(~outcomes,scales = "free")+labs(x="Month",y="ITT")
