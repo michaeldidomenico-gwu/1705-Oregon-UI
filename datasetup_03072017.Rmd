@@ -39,7 +39,7 @@ Pepp message -- message number
 
 ```{r Data_Import}
 library("openxlsx")
-filepath <- "Data/PEPP Updated UI Monthly Dataset 030116-123116 NoPassword.xlsx" ## By hand remove the password protection.
+filepath <- "Data/PEPP Updated UI Monthly Dataset 030116-123116 No Password.xlsx" ## By hand remove the password protection.
 
 #Create dataframes for each month from Mar - December 2016
 or.df1 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 1) #March
@@ -78,8 +78,6 @@ stopifnot(nrow(or.df)==length(unique(or.df$PEP.Unique.ID))) #ensure there are no
 Check for missing id:
 
 ```{r}
-## 
-
 ## Make sure only 1 person has missing ID data
 stopifnot(sum(is.na(or.df$PEP.Unique.ID))==1)
 or.df <- or.df[!is.na(or.df$PEP.Unique.ID),]
@@ -89,7 +87,7 @@ or.df <- or.df[!is.na(or.df$PEP.Unique.ID),]
 
 ```{r}
 # No duplicate IDs in this dataset
-sum(table(or.df$PEP.Unique.ID)>1)
+stopifnot(sum(table(or.df$PEP.Unique.ID)>1)==0)
 ```
 
 ## Checking Dates
@@ -143,11 +141,8 @@ table(or.df$Exhausted.Benefits.Flag[or.df$Initial.Claim.Entered.Date>or.df$Date.
 sum(is.na(or.df$Date.Claim.Restarted)) # 23348
 sum(!is.na(or.df$Date.Claim.Restarted)) # 17571
 
-# Among thos who Restart Claims, is date after intiial claim
+# Among thos who Restart Claims, is date after initial claim
 sum(or.df$Date.Claim.Restarted>or.df$Initial.Claim.Entered.Date,na.rm=T) # 17571
-
-
-
 
 # None of those re-starting claims had claimed in the previous week
 table(or.df$Claimed.Previous.Week.Flag[!is.na(or.df$Date.Claim.Restarted)])
@@ -155,9 +150,6 @@ table(or.df$Claimed.Previous.Week.Flag[is.na(or.df$Date.Claim.Restarted)])
 # Some have exited UI
 table(or.df$Exited.UI.Flag[is.na(or.df$Date.Claim.Restarted)])
 table(or.df$Exited.UI.Flag[!is.na(or.df$Date.Claim.Restarted)])
-
-
-
 ```
 
 
@@ -175,13 +167,15 @@ row.names(or.df) <- or.df$PEP.Unique.ID
 or.wages2016Q3 <- read.xlsx("Data/PEPP UI Monthly Dataset Wages Only 030116-093016 No Password.xlsx",check.names=TRUE, detectDates=TRUE)
 dim(or.wages2016Q3)
 
+## Make sure that the variable names are the saame
 setdiff(names(or.df),names(or.wages2016Q3)) ## names of variables on the main dataset not in the wage update
 setdiff(names(or.wages2016Q3),names(or.df))
 
+## Make sure that the IDs are unique
 stopifnot(all(table(or.wages2016Q3$PEP.Unique.ID)==1))
 row.names(or.wages2016Q3)<-or.wages2016Q3$PEP.Unique.ID
 
-
+## Make sure that the IDs are the same on both datasets
 table(or.wages2016Q3$PEP.Unique.ID %in% row.names(or.df))
 table(or.wages2016Q3$PEP.Unique.ID %in% or.df$PEP.Unique.ID)
 
@@ -194,12 +188,23 @@ stopifnot(length(existingids)+length(newids)==nrow(or.wages2016Q3))
 # Check initial claims dates
 range(or.wages2016Q3$Initial.Claim.Entered.Date)
 stopifnot(all.equal(or.df[existingids,"Initial.Claim.Entered.Date"],or.wages2016Q3[existingids,"Initial.Claim.Entered.Date"]))
-stopifnot(all.equal(or.df[existingids,"Date.Claiming.Stopped"],or.wages2016Q3[existingids,"Date.Claiming.Stopped"]))
 
-#all.equal(or.df[existingids,],or.wages2016Q3[existingids,])
+#### Fails the next two. 
+## We think that the wage file updated all of the other variables on some other date the file was created, not as of Dec 31.
+## stopifnot(all.equal(or.df[existingids,"Date.Claiming.Stopped"],or.wages2016Q3[existingids,"Date.Claiming.Stopped"]))
+## blah<-or.df[existingids,"Date.Claiming.Stopped"]!=or.wages2016Q3[existingids,"Date.Claiming.Stopped"]
+## blah<-or.df[existingids,"Date.Claiming.Stopped"]!=or.wages2016Q3[existingids,"Date.Claiming.Stopped"]
+## or.wages2016Q3[blah,c("Date.Claim.Restarted","Date.Claiming.Stopped")][1:10,]
+## stopifnot(all.equal(or.df[existingids,"Claim.Restarted.Flag"],or.wages2016Q3[existingids,"Claim.Restarted.Flag"]))
+### SO, from the wage file: only keep these variables.
+##[19] "Employed.Flag"
+##[20] "Quarter.of.Wages"
+##[21] "Amount.of.Wages"
 
+summary(or.df[existingids,"Amount.of.Wages"]-or.wages2016Q3[existingids,"Amount.of.Wages"])
 
-or.df[existingids,]<-or.wages2016Q3[existingids,]
+## The Wages File is the File of Record??? 
+or.df[existingids,c("Employed.Flag","Quarter.of.Wages","Amount.of.Wages")]<-or.wages2016Q3[existingids,c("Employed.Flag","Quarter.of.Wages","Amount.of.Wages")]
 # Add new cases
 or.df <- rbind(or.df,or.wages2016Q3[newids,])
 
@@ -284,8 +289,7 @@ out of their online profile.
 ## Save the files
 
 ```{r}
-save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,or.df8,or.df9,or.df10,
-     file="Data/clean/monthlyordat.rda")
-save(or.df, file="Data/clean/or.df.rda")
+save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,or.df8,or.df9,or.df10, file="Data/monthlyordat.rda")
+save(or.df, file="Data/or.df.rda")
 ```
 
