@@ -200,10 +200,16 @@ wrkdat <- wrkdat[order(wrkdat$pair,wrkdat$treat),]
 row.names(wrkdat) <- as.character(wrkdat$fonum)
 
 pairweights<-wrkdat %>% group_by(pair) %>% dplyr::summarise(
-    pairN=sum(N)
+    pairN=sum(N),
+    treat_weight=sum(N[treat==1])/sum(N),
+    ctrl_weight=sum(N[treat==0])/sum(N)
+    
 )
-pairweights$weight<-pairweights$pairN/sum(pairweights$pairN)/2    
+n<-sum(wrkdat$N)
 wrkdat<-inner_join(wrkdat,pairweights,by="pair")
+wrkdat$weight[wrkdat$treat==1]<-with(wrkdat[wrkdat$treat==1,],pairN/n*treat_weight)
+wrkdat$weight[wrkdat$treat==0]<-with(wrkdat[wrkdat$treat==0,],pairN/n*ctrl_weight)
+
 
 ```
 
@@ -229,12 +235,15 @@ stopifnot(all.equal(wrkdat$welcomeMD[wrkdat$pair=="a"],
 
 ```{r estimates, results='hide'}
 ## First, just show two equivalent ways to get the ITT
+# Note equal weights within pairs gives same values, unequal weights gives different values
 welcomeATEa <- lm(welcome_mean~treat+pair,data=wrkdat,weights=weight)
 welcomeATE <- lm(welcomeMD~treatMD,data=wrkdat,weights=weight)
 summary(welcomeATE)
+summary(welcomeATEa)
 
-welcomeATE$model
-stopifnot(all.equal(coef(welcomeATEa)[[2]],coef(welcomeATE)[[2]]))
+
+
+#stopifnot(all.equal(coef(welcomeATEa)[[2]],coef(welcomeATE)[[2]]))
 
 ## Next calc the diff of means for all outcomes
 aggoutcomes <- paste(outcomes,"MD",sep="")
@@ -366,11 +375,15 @@ for(i in outcomes){
 	wrkdat_emp[,paste(i,"MD",sep="")]<- wrkdat_emp[[nm]] - ave(wrkdat_emp[[nm]],wrkdat_emp$pair)
 }
 pairweights_emp<-wrkdat_emp %>% group_by(pair) %>% dplyr::summarise(
-    pairN=sum(N)
+    pairN=sum(N),
+    treat_weight=sum(N[treat==1])/sum(N),
+    ctrl_weight=sum(N[treat==0])/sum(N)
+    
 )
-pairweights_emp$weight<-pairweights_emp$pairN/sum(pairweights_emp$pairN)/2    
+n<-sum(wrkdat_emp$N)
 wrkdat_emp<-inner_join(wrkdat_emp,pairweights_emp,by="pair")
-
+wrkdat_emp$weight[wrkdat_emp$treat==1]<-with(wrkdat_emp[wrkdat_emp$treat==1,],pairN/n*treat_weight)
+wrkdat_emp$weight[wrkdat_emp$treat==0]<-with(wrkdat_emp[wrkdat_emp$treat==0,],pairN/n*ctrl_weight)
 
 employedATE <- coef(lm(employedMD~treatMD,data=wrkdat_emp,weights=weight))[2]
 wrkdat_emp$treatF <- factor(wrkdat_emp$treat,levels=c("1","0"))
@@ -398,11 +411,15 @@ for(i in c(outcomes,"employed_alt")){
 	wrkdat_emp2[,paste(i,"MD",sep="")]<- wrkdat_emp2[[nm]] - ave(wrkdat_emp2[[nm]],wrkdat_emp2$pair)
 }
 pairweights_emp2<-wrkdat_emp2 %>% group_by(pair) %>% dplyr::summarise(
-    pairN=sum(N)
+    pairN=sum(N),
+    treat_weight=sum(N[treat==1])/sum(N),
+    ctrl_weight=sum(N[treat==0])/sum(N)
+    
 )
-pairweights_emp2$weight<-pairweights_emp2$pairN/sum(pairweights_emp2$pairN)/2    
+n<-sum(wrkdat_emp2$N)
 wrkdat_emp2<-inner_join(wrkdat_emp2,pairweights_emp2,by="pair")
-
+wrkdat_emp2$weight[wrkdat_emp2$treat==1]<-with(wrkdat_emp2[wrkdat_emp2$treat==1,],pairN/n*treat_weight)
+wrkdat_emp2$weight[wrkdat_emp2$treat==0]<-with(wrkdat_emp2[wrkdat_emp2$treat==0,],pairN/n*ctrl_weight)
 
 employedATEalt <- coef(lm(employed_altMD~treatMD,data=wrkdat_emp2,weights=weight))[2]
 wrkdat_emp2$treatF <- factor(wrkdat_emp2$treat,levels=c("1","0"))
@@ -452,12 +469,16 @@ for(i in outcomes){
 	nm <- paste(i,"_mean",sep="")
 	wrkdat_noneg[,paste(i,"MD",sep="")]<- wrkdat_noneg[[nm]] - ave(wrkdat_noneg[[nm]],wrkdat_noneg$pair)
 }
-
 pairweights_noneg<-wrkdat_noneg %>% group_by(pair) %>% dplyr::summarise(
-    pairN=sum(N)
+    pairN=sum(N),
+    treat_weight=sum(N[treat==1])/sum(N),
+    ctrl_weight=sum(N[treat==0])/sum(N)
+    
 )
-pairweights_noneg$weight<-pairweights_noneg$pairN/sum(pairweights_noneg$pairN)/2    
+n<-sum(wrkdat_noneg$N)
 wrkdat_noneg<-inner_join(wrkdat_noneg,pairweights_noneg,by="pair")
+wrkdat_noneg$weight[wrkdat_noneg$treat==1]<-with(wrkdat_noneg[wrkdat_noneg$treat==1,],pairN/n*treat_weight)
+wrkdat_noneg$weight[wrkdat_noneg$treat==0]<-with(wrkdat_noneg[wrkdat_noneg$treat==0,],pairN/n*ctrl_weight)   
 
 
 aggoutcomes <- paste(outcomes,"MD",sep="")
@@ -542,10 +563,15 @@ stopifnot(all.equal(wrkdat2$welcomeMD[wrkdat2$pair=="a"],
 		    ) )
 
 pairweights2<-wrkdat2 %>% group_by(pair) %>% dplyr::summarise(
-    pairN=sum(N)
+    pairN=sum(N),
+    treat_weight=sum(N[treat==1])/sum(N),
+    ctrl_weight=sum(N[treat==0])/sum(N)
+    
 )
-pairweights2$weight<-pairweights2$pairN/sum(pairweights2$pairN)/2    
+n<-sum(wrkdat2$N)
 wrkdat2<-inner_join(wrkdat2,pairweights2,by="pair")
+wrkdat2$weight[wrkdat2$treat==1]<-with(wrkdat2[wrkdat2$treat==1,],pairN/n*treat_weight)
+wrkdat2$weight[wrkdat2$treat==0]<-with(wrkdat2[wrkdat2$treat==0,],pairN/n*ctrl_weight)
 
 ```
 
@@ -642,9 +668,16 @@ for(i in outcomes){
 pairweights_month<-wrkdat_month %>% group_by(pair) %>% dplyr::summarise(
     pairN=sum(N)
 )
-pairweights_month$weight<-pairweights_month$pairN/sum(pairweights_month$pairN)/2    
+pairweights_month<-wrkdat_month %>% group_by(pair) %>% dplyr::summarise(
+    pairN=sum(N),
+    treat_weight=sum(N[treat==1])/sum(N),
+    ctrl_weight=sum(N[treat==0])/sum(N)
+    
+)
+n<-sum(wrkdat_month$N)
 wrkdat_month<-inner_join(wrkdat_month,pairweights_month,by="pair")
-
+wrkdat_month$weight[wrkdat_month$treat==1]<-with(wrkdat_month[wrkdat_month$treat==1,],pairN/n*treat_weight)
+wrkdat_month$weight[wrkdat_month$treat==0]<-with(wrkdat_month[wrkdat_month$treat==0,],pairN/n*ctrl_weight)
 if(the_month>9){outcomes<-outcomes[-6]} # no wage data after september
 aggoutcomes <- paste(outcomes,"MD",sep="")
 theITTS_month <- sapply(aggoutcomes,function(v){
