@@ -1,0 +1,699 @@
+---
+title: "Prelim Analysis/Data Inspection"
+author: "Daniel Shephard, Jake Bowers, Michael DiDomenico"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+      graphics: yes
+      fig_caption: yes
+---
+
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+require(knitr)
+opts_chunk$set(tidy=FALSE,     # display code as typed
+	       size="small",    # slightly smaller font for code
+	       echo=FALSE,
+	       results='markup',
+	       strip.white=TRUE,
+	       ## fig.path='figs/fig',
+	       cache=FALSE,
+	       highlight=TRUE,
+	       width.cutoff=132,
+	       size='footnotesize',
+	       #out.width='.9\\textwidth',
+	       message=FALSE,
+	       comment=NA)
+
+options(width=132,scipen=8,digits=4)
+```
+
+
+# Overview of the Project
+
+
+## Goal:
+
+Accelerate finding employment and reduce time on unemployment insurance among unemployment insurance clients in Oregon. 
+
+This file executes the analysis of the experiment. It relies on files produced by the `datasetup.Rmd` file.
+
+```{r loadlibs}
+library(lmtest)
+library(sandwich)
+library(car)
+library(NPC)
+library(RItools)
+library(coin)
+library(dplyr)
+library(lubridate)
+library(mosaic)
+```
+
+The two working data files are produced by the `datasetup.Rmd` file.
+
+```{r}
+load("Data/clean/or.df.rda")
+load("Data/clean/monthlyordat.rda") ## Contains the month by month data
+```
+
+## Table of welcome conversations by field office
+
+The following table shows the number of welcome conversations conducted at each
+of the field offices in each month. Some of these welcomes come from the month
+by month data pulls. Others come from the updated wages file. The first column
+has the field office labels.
+
+```{r}
+tmp <- sapply(split(or.df,months(or.df$claim.date)),function(dat){ table(dat$fonum) })
+tmp <- tmp[,c("March","April","May","June","July","August","September","October","November","December")]
+```
+
+
+```{r}
+knitr::kable(tmp)
+
+```
+
+
+# The Experiment:
+
+The experiment randomly assigned the new set of procedures to 7 out of the 14
+offices after first grouping the offices into pairs.  Pairs were created by
+both urban, geography, size (number of people who came for UI), and quality of
+staff (judgement of the management in Oregon). Pairs provided by the management
+of the Oregon State program.
+
+```{r Pull_Pairs, results='hide'}
+#----ORIGINAL CODE FOR RANDOMIZATION------
+##pairfilepath <- "C:/Users/DanielDShephard/Documents/SBST/DOL/UI Oregon/Analysis/OR_Analysis/Oregon_Pairs_14-Field-Offices_20160111.csv"
+pairfilepath <- "Data/Oregon_Pairs_14-Field-Offices_20160111.csv"
+pairs2 <- read.csv(pairfilepath, row.names = 1)
+row.names(pairs2)<-pairs2$fo.num
+pairs2 <- pairs2[order(pairs2$pair), ] #ensure that all pairs are next to each other
+#Random generation of uniform distribution x14, one number per field office
+#The highest number in the pair is allocated to the treatment group
+pairs2$treat <- 0
+set.seed(20160108) #note, ran once with 20150108, but changed to match date
+ran.no <- runif(14)
+for (i in 1:7)
+{
+	if(ran.no[i*2] > ran.no[(i*2)-1])
+	{
+		pairs2[i*2, "treat"] <- 1
+	}
+	else
+	{
+		pairs2[i*2-1, "treat"] <- 1
+	}
+
+}
+
+#Check the frequency of assignment with different seeds to ensure 50% chance
+#Run allocation logic used above through 1000 different seeds
+pair2 <- NA
+pair2 <- as.numeric(pair2)
+for (q in 1:1000) #run 1000 simulations of different seeds
+{
+	set.seed(20160107+q)
+	ran.no <- runif(14)
+	for (i in 1:7) #for a set of 7 pairs with the current seed do the following
+	{
+		if(ran.no[i*2] > ran.no[(i*2)-1]) #if the even number in the pair is greater than the odd number
+		{
+			pair2 <- rbind(pair2, 1) #then give it a treatment value of 1
+		}
+		else
+		{
+			pair2 <- rbind(pair2, 0) #else give the second in the pair a value of 0
+		}
+	}
+}
+treat.probability <- mean(pair2, na.rm=TRUE)
+samp.m1 <- (lm(ui.wks ~ treat, data=pairs2)) #original scores
+samp.m2 <- (lm(tot ~ treat, data=pairs2)) #original scores
+summary(samp.m1)
+summary(samp.m2)
+```
+
+The number of welcomes and average weeks on UI is from 2015 data (Pre Intervention)
+
+```{r pairstable}
+#Write out the new dataset with treatment allocation
+knitr::kable(pairs2[order(pairs2$pair, pairs2$treat), c(1:2, 14, 9, 12, 10)]) #Order by pairs, with control pair office first
+```
+
+### Outcomes
+
+The overall outcomes collected at the individual level within the period
+covered by the data pull included:
+
+ - `welcome` Whether the person had a welcome meeting
+ - `uiexit` Whether the person stopped making unemployment claims for 3 weeks in a row.
+ - `employed` Whether a different company reports wages for the person in a quarter after the quarter they applied for UI
+ - `time.to.exit` The number of days between making the first claim and exiting the program.
+ - `plans` Number of action plans uploaded by an individual in the program
+ - `wages` The wages earned by the person (?average? ?weekly?)
+
+
+```{r results=FALSE}
+outcomes <- c("welcome","uiexit","employed","time.to.exit","plans","wages")
+summary(or.df[,outcomes])
+aggvars <- c("insert",outcomes)
+```
+
+```{r}
+table(or.df$uiexit,months(or.df$claim.date))
+```
+
+## Employment Center Level Analysis
+
+Because the intervention was randomized at the level of the employment office, we compare outcomes at that level: did offices in the new program display outcomes that differed from the offices operating under the status quo program? 
+
+```{r}
+# Remove Cases after Sept 30, 2016
+or.df<-or.df[or.df$claim.date<=ymd("2016-09-30"),]
+## This next creates more columns than I would like
+officedat <- or.df[or.df$claim.date<=ymd("2016-09-30"),] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf <- as.data.frame(officedat[,c("fonum",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf)<-officedf$fonum
+names(officedf)[names(officedf)%in%c("wages_sum","insert_n")] <- c("missingwage","N")
+
+
+## wages_sum is the number of people with missing wages data
+
+## Check that the calculation of the mean within office is correct by looking at one office
+stopifnot(all.equal(with(or.df,mean(welcome[fonum=="210"])),officedf["210","welcome_mean"]))
+```
+
+
+```{r mergeontreatment}
+## Add treatment assignment info
+officedf$fonum <- as.numeric(officedf$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat <- inner_join(officedf,pairs2,by="fonum")
+wrkdat <- wrkdat[order(wrkdat$pair,wrkdat$treat),]
+row.names(wrkdat) <- as.character(wrkdat$fonum)
+
+pairweights<-wrkdat %>% group_by(pair) %>% dplyr::summarise(
+    pairN=sum(N)
+)
+pairweights$weight<-pairweights$pairN/sum(pairweights$pairN)/2    
+wrkdat<-inner_join(wrkdat,pairweights,by="pair")
+
+```
+
+
+```{r}
+## Pair-mean center to handle the pairing:
+
+wrkdat$treatMD <- with(wrkdat,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat[,paste(i,"MD",sep="")]<- wrkdat[[nm]] - ave(wrkdat[[nm]],wrkdat$pair)
+}
+knitr::kable(wrkdat) #If this table is too big it could be broken into pieces
+
+## Check the pair centering
+stopifnot(all.equal(wrkdat$welcomeMD[wrkdat$pair=="a"],
+		    with(wrkdat[wrkdat$pair=="a",], welcome_mean - mean(welcome_mean))
+		    ) )
+```
+
+# Office Level Effects
+
+```{r estimates, results='hide'}
+## First, just show two equivalent ways to get the ITT
+welcomeATEa <- lm(welcome_mean~treat+pair,data=wrkdat,weights=weight)
+welcomeATE <- lm(welcomeMD~treatMD,data=wrkdat,weights=weight)
+summary(welcomeATE)
+
+welcomeATE$model
+stopifnot(all.equal(coef(welcomeATEa)[[2]],coef(welcomeATE)[[2]]))
+
+## Next calc the diff of means for all outcomes
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat,weights=weight))[[2]]
+})
+theITTS
+```
+
+
+```{r ripvalues}
+set.seed(20170324)
+
+# create dataframe with 128 possible paired assignements
+omega<-mosaic::do(1000)*mosaic::shuffle(wrkdat$treatMD,group=wrkdat$pair)
+omega<-data.frame(t(omega[!duplicated(omega),]))
+stopifnot(dim(omega)[2]==2^7)
+
+# For each outcome generate null distribution, return pvalue
+theps<-rep(NA,length(aggoutcomes))
+names(theps)<-aggoutcomes
+for(i in aggoutcomes){
+    theNull<-sapply(1:128,function(x){
+    coef(lm(reformulate("omega[,x]",response=i),data=wrkdat,weights=weight))[[2]]})
+    #left<-mean(theNull<=theITTS[i])
+    #right<-mean(theNull>=theITTS[i])
+    #print(c(left,right))
+    #theps[i]<-2*c(left,right)[which.min(c(left,right))]
+    theps[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+
+}
+
+
+
+
+
+```
+
+
+```{r tests, eval=F,results='hide'}
+# Commenting out old code,
+# coin package doesn't seem to be happy with weights
+
+## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
+wrkdat$treatF <- factor(wrkdat$treat,levels=c("1","0"))
+set.seed(20161102)
+class(wrkdat$pair)
+classwrkdat[,"treatF"]
+test<-new("IndependenceProblem",x=data.frame(wrkdat[,"treatF"]),
+          y=data.frame(wrkdat[,"welcome_mean"]),
+          block=wrkdat$pair,
+          weights=rep(5,14)
+          )
+test@weights<-wrkdat$weight
+class(test@weights)
+class(test)
+oneway_test(test,distribution=approximate(B=5000))
+welcomeTest <- oneway_test(welcome_mean ~ treatF | pair, data=wrkdat,distribution=approximate(B=5000))
+welcomeTest@method
+
+## The following uses a large sample approximation to the randomization distribution (Mostly just a check on the preceding)
+xb1<-xBalance(treat ~ welcome_mean,strata=list(pair=~pair),data=wrkdat,report="all")
+xb1$results
+wrkdat$weight
+## Now do it for all
+theps <- sapply(aggoutcomes,function(v){
+			 results <- oneway_test(reformulate("treatF | pair ",response=v,weights=weight),data=wrkdat,weights=weight,distribution=approximate(B=5000))
+			 return(pvalue(results))
+})
+theps
+```
+
+
+We present differences of means weighted by pair size below --- they are an unbiased estimator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests. Because the sample size is so small, we use a randomization-based approach. In short, the intervention appeared effective at increasing the number of plans completed, but did not appear influence any of the remaining outcomes.
+
+```{r}
+cbind(theITTS,theps)
+```
+
+
+
+
+
+
+```{r}
+# Test the null of no effects for any outcome
+# Not sure how to implement with weights yet
+
+npcresults <- NPC(wrkdat,tr.var="treat",tr.label="1",y.vars=paste(outcomes,"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults$p.values
+
+# Here we see that the evidence against the null of no effects for any outcome has a p-value of roughly `r npcresults$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximate ones above). Here using the Student's T test statistic.
+```
+
+
+
+# Dealing with Missing Wage Data
+
+`r table(or.df$employed,is.na(or.df$wages),useNA="ifany")[2,2]` participants are flagged as being employed but have no available wage data. The cases are relatively evenly distributed throughout the study, but slighty more common in the later months (`r round((1-sum(prop.table(table(month(or.df$claim.date[or.df$employed==1&is.na(or.df$wages)==T])))[8:10]))*100,2)` percent are for claims made before October).
+
+Below we present the main results for employment status and compare them to results that exclude cases with mising wage data or treat those cases as instances of unemployment. In all cases the effect of treatment is marginally negative and non-significant.
+
+
+```{r}
+
+# 308 respondens coded as employed but missing wage data
+table(or.df$employed,is.na(or.df$wages),useNA="ifany")
+
+# Roughly evenly distributed through out the sample.
+sum(prop.table(table(month(or.df$claim.date[or.df$employed==1&is.na(or.df$wages)==T])))[8:10])
+
+# Exclude cases who said they were employed but had no wage data
+officedat_emp <- or.df[!or.df$employed==1&is.na(or.df$wages)==T|
+                           or.df$employed==1&!is.na(or.df$wages)==T
+                       ,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_emp <- as.data.frame(officedat_emp[,c("fonum",grep("mean",names(officedat_emp),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_emp)<-officedf_emp$fonum
+names(officedf_emp)[names(officedf_emp)%in%c("wages_sum","insert_n")] <- c("missingwage","N")
+
+officedf_emp$fonum <- as.numeric(officedf_emp$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_emp <- inner_join(officedf_emp,pairs2,by="fonum")
+wrkdat_emp <- wrkdat_emp[order(wrkdat_emp$pair,wrkdat_emp$treat),]
+row.names(wrkdat_emp) <- as.character(wrkdat_emp$fonum)
+wrkdat_emp$treatMD <- with(wrkdat_emp,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_emp[,paste(i,"MD",sep="")]<- wrkdat_emp[[nm]] - ave(wrkdat_emp[[nm]],wrkdat_emp$pair)
+}
+pairweights_emp<-wrkdat_emp %>% group_by(pair) %>% dplyr::summarise(
+    pairN=sum(N)
+)
+pairweights_emp$weight<-pairweights_emp$pairN/sum(pairweights_emp$pairN)/2    
+wrkdat_emp<-inner_join(wrkdat_emp,pairweights_emp,by="pair")
+
+
+employedATE <- coef(lm(employedMD~treatMD,data=wrkdat_emp,weights=weight))[2]
+wrkdat_emp$treatF <- factor(wrkdat_emp$treat,levels=c("1","0"))
+employedATE_pval<-pvalue(oneway_test(employed_mean~treatF|pair,data=wrkdat_emp,distribution=approximate(B=5000)))
+
+# Create alternate employment flag
+or.df$employed_alt<-or.df$employed
+# Treat missing wage cases as unemployed
+or.df$employed_alt[or.df$employed==1&is.na(or.df$wages)==T]<-0
+
+officedat_emp2 <- or.df %>% group_by(fonum) %>% summarize_at(c(aggvars,"employed_alt"),.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_emp2 <- as.data.frame(officedat_emp2[,c("fonum",grep("mean",names(officedat_emp2),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_emp2)<-officedf_emp2$fonum
+names(officedf_emp2)[names(officedf_emp2)%in%c("wages_sum","insert_n")] <- c("missingwage","N")
+
+officedf_emp2$fonum <- as.numeric(officedf_emp2$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_emp2 <- inner_join(officedf_emp2,pairs2,by="fonum")
+wrkdat_emp2 <- wrkdat_emp2[order(wrkdat_emp2$pair,wrkdat_emp2$treat),]
+row.names(wrkdat_emp2) <- as.character(wrkdat_emp2$fonum)
+wrkdat_emp2$treatMD <- with(wrkdat_emp2,treat - ave(treat,pair))
+for(i in c(outcomes,"employed_alt")){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_emp2[,paste(i,"MD",sep="")]<- wrkdat_emp2[[nm]] - ave(wrkdat_emp2[[nm]],wrkdat_emp2$pair)
+}
+pairweights_emp2<-wrkdat_emp2 %>% group_by(pair) %>% dplyr::summarise(
+    pairN=sum(N)
+)
+pairweights_emp2$weight<-pairweights_emp2$pairN/sum(pairweights_emp2$pairN)/2    
+wrkdat_emp2<-inner_join(wrkdat_emp2,pairweights_emp2,by="pair")
+
+
+employedATEalt <- coef(lm(employed_altMD~treatMD,data=wrkdat_emp2,weights=weight))[2]
+wrkdat_emp2$treatF <- factor(wrkdat_emp2$treat,levels=c("1","0"))
+employedATE_pval_alt<-pvalue(oneway_test(employed_alt_mean~treatF|pair,data=wrkdat_emp2,distribution=approximate(B=5000)))
+
+
+employed_tab<-cbind(rbind(theITTS[3],employedATE,employedATEalt),rbind(theps[3],employedATE_pval,employedATE_pval_alt))
+rownames(employed_tab)<-c("Main Result","Removing Cases with Missing Wages","Recoding Missing Wages as Unemployed")
+colnames(employed_tab)<-c("ITT","p-value")
+```
+
+```{r,results="markdown"}
+kable(employed_tab,caption = "ITT for Treatment on Employment Status")
+```
+
+
+# Effects Excluding Those With a Short Time on the Program
+
+```{r,negativeexit,echo=F,results="hide"}
+sum(or.df$time.to.exit<=0)/dim(or.df)[1]
+sum(sort(prop.table(with(or.df[or.df$time.to.exit<=0,],table(time.to.exit))),decreasing = T)[1:5])
+
+officedat_noneg <- or.df[or.df$time.to.exit>=0,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_noneg <- as.data.frame(officedat_noneg[,c("fonum",grep("mean",names(officedat_noneg),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_noneg)<-officedf_noneg$fonum
+names(officedf_noneg)[names(officedf_noneg)%in%c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf_noneg$fonum <- as.numeric(officedf_noneg$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_noneg <- inner_join(officedf_noneg,pairs2,by="fonum")
+wrkdat_noneg <- wrkdat_noneg[order(wrkdat_noneg$pair,wrkdat_noneg$treat),]
+row.names(wrkdat_noneg) <- as.character(wrkdat_noneg$fonum)
+
+## Pair-mean center to handle the pairing:
+
+wrkdat_noneg$treatMD <- with(wrkdat_noneg,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_noneg[,paste(i,"MD",sep="")]<- wrkdat_noneg[[nm]] - ave(wrkdat_noneg[[nm]],wrkdat_noneg$pair)
+}
+
+wrkdat_noneg$treatMD <- with(wrkdat_noneg,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_noneg[,paste(i,"MD",sep="")]<- wrkdat_noneg[[nm]] - ave(wrkdat_noneg[[nm]],wrkdat_noneg$pair)
+}
+
+pairweights_noneg<-wrkdat_noneg %>% group_by(pair) %>% dplyr::summarise(
+    pairN=sum(N)
+)
+pairweights_noneg$weight<-pairweights_noneg$pairN/sum(pairweights_noneg$pairN)/2    
+wrkdat_noneg<-inner_join(wrkdat_noneg,pairweights_noneg,by="pair")
+
+
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS_noneg <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat_noneg,weights=weight))[[2]]
+})
+
+theps_noneg<-rep(NA,length(aggoutcomes))
+names(theps_noneg)<-aggoutcomes
+for(i in aggoutcomes){
+    theNull<-sapply(1:128,function(x){
+    coef(lm(reformulate("omega[,x]",response=i),data=wrkdat_noneg,weights=weight))[[2]]})
+    #left<-mean(theNull<=theITTS[i])
+    #right<-mean(theNull>=theITTS[i])
+    #print(c(left,right))
+    #theps_noneg[i]<-2*c(left,right)[which.min(c(left,right))]
+    theps_noneg[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+
+}
+
+#wrkdat_noneg$treatF <- factor(wrkdat_noneg$treat,levels=c("1","0"))
+#
+
+# theps_noneg <- sapply(aggoutcomes,function(v){
+# 			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat_noneg,distribution=approximate(B=5000))
+# 			 return(pvalue(results))
+# })
+# 
+# npcresults_nonneg <- NPC(wrkdat_noneg,tr.var="treat",tr.label="1",y.vars=paste(outcomes[-5],"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+
+```
+
+
+A small portion of the cases appear to have "negative" times to exiting the program, (N=`r sum(or.df$time.to.exit<=0)` or `r round(sum(or.df$time.to.exit<=0)/dim(or.df)[1]*100,1)` percent of cases)
+
+Time to exiting the program is calculated by the subtracting participant's initial unemployment claim date from the date they exited the unemployment insurance. An individual is considered to have exited the program after three weeks of not claiming benefits. Thus exit dates are always on Sundays when a new claim period begins, while initial claim date may be any day during the week. In fact nearly `r round(sum(sort(prop.table(with(or.df[or.df$time.to.exit<=0,],table(time.to.exit))),decreasing = T)[1:5])*100,1)` percent of these cases have values implying exit dates within seven days of the claim process, suggesting most of the negative cases are due to disconnect between how claims are processed and exit times are calculated. Still, as a robustness check, we repeat the main analysis, removing participants with negative times to exit. The results are essentially unchanged.
+
+
+```{r}
+cbind(theITTS_noneg,theps_noneg)
+```
+
+
+
+# Effects on Those With More Time in the Program?
+
+We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016,  (N=`r dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1]`
+
+
+```{r agg2}
+
+dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1]
+## This next creates more columns than I would like
+officedat2 <- or.df[or.df$claim.date<=ymd("2016-06-30"),] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf2 <- as.data.frame(officedat2[,c("fonum",grep("mean",names(officedat2),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf2)<-officedf2$fonum
+names(officedf2)[names(officedf2)%in%c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf2$fonum <- as.numeric(officedf2$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat2 <- inner_join(officedf2,pairs2,by="fonum")
+wrkdat2 <- wrkdat2[order(wrkdat2$pair,wrkdat2$treat),]
+row.names(wrkdat2) <- as.character(wrkdat2$fonum)
+```
+
+
+```{r}
+## Pair-mean center to handle the pairing:
+
+wrkdat2$treatMD <- with(wrkdat2,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat2[,paste(i,"MD",sep="")]<- wrkdat2[[nm]] - ave(wrkdat2[[nm]],wrkdat2$pair)
+}
+knitr::kable(wrkdat2) #If this table is too big it could be broken into pieces
+
+## Check the pair centering
+stopifnot(all.equal(wrkdat2$welcomeMD[wrkdat2$pair=="a"],
+		    with(wrkdat2[wrkdat2$pair=="a",], welcome_mean - mean(welcome_mean))
+		    ) )
+
+pairweights2<-wrkdat2 %>% group_by(pair) %>% dplyr::summarise(
+    pairN=sum(N)
+)
+pairweights2$weight<-pairweights2$pairN/sum(pairweights2$pairN)/2    
+wrkdat2<-inner_join(wrkdat2,pairweights2,by="pair")
+
+```
+
+
+
+```{r estimates2, results='hide'}
+theITTS2 <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat2,weights=weight))[[2]]
+})
+theITTS2
+```
+
+
+```{r tests2, results='hide'}
+theps2<-rep(NA,length(aggoutcomes))
+names(theps2)<-aggoutcomes
+for(i in aggoutcomes){
+    theNull<-sapply(1:128,function(x){
+    coef(lm(reformulate("omega[,x]",response=i),data=wrkdat2,weights=weight))[[2]]})
+    #left<-mean(theNull<=theITTS[i])
+    #right<-mean(theNull>=theITTS[i])
+    #print(c(left,right))
+    #theps2[i]<-2*c(left,right)[which.min(c(left,right))]
+    theps2[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+
+}
+
+## The coin package allows us to use permutations/repetitions of the experiment to assess the hypothesis of no effects in a block-randomized experiment
+# wrkdat2$treatF <- factor(wrkdat2$treat,levels=c("1","0"))
+# set.seed(20161102)
+# 
+# ## Now do it for all
+# theps2 <- sapply(aggoutcomes,function(v){
+# 			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat2,distribution=approximate(B=5000))
+# 			 return(pvalue(results))
+# })
+# theps2
+```
+
+Here are the estimated ITTs and p-values for the null of no effects among the group that had the most time in the program.
+
+```{r}
+cbind(theITTS2,theps2)
+```
+
+
+```{r,eval=F}
+# Test the null of no effects for any outcome
+
+npcresults2 <- NPC(wrkdat2,tr.var="treat",tr.label="1",y.vars=paste(outcomes[-5],"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
+npcresults2$p.values
+
+# Here we see that the evidence against the null of no effects for any outcome with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximate ones above). The test statistic used here, by default, is Student's T.
+```
+
+
+
+## Separate Effects by Month
+
+Below I show the estimated effects by month for each of the six outcomes.
+
+```{r monthly}
+# Wrapper Function to calculate by month
+
+monthly_itts<-function(the_month=3){
+    ## This next creates more columns than I would like
+officedat_month <- or.df[month(or.df$claim.date)==the_month,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_month <- as.data.frame(officedat_month[,c("fonum",grep("mean",names(officedat_month),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_month)<-officedf_month$fonum
+names(officedf_month)[names(officedf_month)%in%c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf_month$fonum <- as.numeric(officedf_month$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_month <- inner_join(officedf_month,pairs2,by="fonum")
+wrkdat_month <- wrkdat_month[order(wrkdat_month$pair,wrkdat_month$treat),]
+row.names(wrkdat_month) <- as.character(wrkdat_month$fonum)
+
+## Pair-mean center to handle the pairing:
+
+wrkdat_month$treatMD <- with(wrkdat_month,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_month[,paste(i,"MD",sep="")]<- wrkdat_month[[nm]] - ave(wrkdat_month[[nm]],wrkdat_month$pair)
+}
+
+wrkdat_month$treatMD <- with(wrkdat_month,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_month[,paste(i,"MD",sep="")]<- wrkdat_month[[nm]] - ave(wrkdat_month[[nm]],wrkdat_month$pair)
+}
+pairweights_month<-wrkdat_month %>% group_by(pair) %>% dplyr::summarise(
+    pairN=sum(N)
+)
+pairweights_month$weight<-pairweights_month$pairN/sum(pairweights_month$pairN)/2    
+wrkdat_month<-inner_join(wrkdat_month,pairweights_month,by="pair")
+
+if(the_month>9){outcomes<-outcomes[-6]} # no wage data after september
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS_month <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat_month,weights=weight))[[2]]
+})
+
+theps_month<-rep(NA,length(aggoutcomes))
+names(theps_month)<-aggoutcomes
+for(i in aggoutcomes){
+    theNull<-sapply(1:128,function(x){
+    coef(lm(reformulate("omega[,x]",response=i),data=wrkdat_month,weights=weight))[[2]]})
+    #left<-mean(theNull<=theITTS[i])
+    #right<-mean(theNull>=theITTS[i])
+    #print(c(left,right))
+    #theps_month[i]<-2*c(left,right)[which.min(c(left,right))]
+    theps_month[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+
+}
+# wrkdat_month$treatF <- factor(wrkdat_month$treat,levels=c("1","0"))
+
+# theps_month <- sapply(aggoutcomes,function(v){
+# 			 results <- oneway_test(reformulate("treatF | pair ",response=v),data=wrkdat_month,distribution=approximate(B=5000))
+# 			 return(pvalue(results))
+# })
+
+return(data.frame(theITTS_month,theps_month,the_month,outcomes))
+}
+
+march_itt<-monthly_itts(the_month=3)
+april_itt<-monthly_itts(the_month=4)
+may_itt<-monthly_itts(the_month=5)
+june_itt<-monthly_itts(the_month=6)
+july_itt<-monthly_itts(the_month=7)
+august_itt<-monthly_itts(the_month=8)
+september_itt<-monthly_itts(the_month=9)
+#october_itt<-monthly_itts(the_month=10)
+#november_itt<-monthly_itts(the_month=11)
+#december_itt<-monthly_itts(the_month=12)
+
+monthly_df<-rbind(march_itt,april_itt,may_itt,june_itt,july_itt,august_itt,september_itt)
+monthly_df$outcomes<-factor(monthly_df$outcomes)
+library(ggplot2)       
+monthly_plot<-ggplot(monthly_df,aes(x=the_month,y=theITTS_month))+geom_line()+facet_wrap(~outcomes,scales = "free")+labs(x="Month",y="ITT")
+
+
+```
+
+```{r,results="markup"}
+monthly_plot
+```
+
+
