@@ -257,10 +257,33 @@ theITTS
 ```{r ripvalues}
 set.seed(20170324)
 
-# create dataframe with 128 possible paired assignements
-omega<-mosaic::do(1000)*mosaic::shuffle(wrkdat$treatMD,group=wrkdat$pair)
-omega<-data.frame(t(omega[!duplicated(omega),]))
-stopifnot(dim(omega)[2]==2^7)
+B <- gl(7,2)
+N <- 14
+K <- prod(rep(choose(2,1),N/2))
+omega <- data.frame(matrix(-0.5,N,K))
+blocksizes <- rep(2,7)
+blocktreated <- rep(1,7)
+trtedlocs<-mapply(function(x,m){ combn(x,m) },x=blocksizes,m=blocktreated,SIMPLIFY=FALSE)
+trtedlocsMat <- t(expand.grid(trtedlocs))
+trtloc_b <- lapply(split(trtedlocsMat,B),function(x){ cbind(x,1:128) })
+om_b <- split(omega,B)
+## Test
+##Om_b[[1]][trtloc_b[[1]]]<-1
+##Om_b[[1]]
+for(i in 1:length(om_b)){
+   om_b[[i]][trtloc_b[[i]]]<-.5
+ }
+ omega<-do.call("rbind",om_b)
+ stopifnot(dim(unique(omega))==c(14,128))
+ test1 <- apply(omega,2,function(x){ tapply(x,B,sum) })
+ stopifnot(all(test1==0))
+
+# # create dataframe with 128 possible paired assignements
+# omega<-mosaic::do(1000)*mosaic::shuffle(wrkdat$treatMD,group=wrkdat$pair)
+# omega<-data.frame(t(omega[!duplicated(omega),]))
+# stopifnot(dim(omega)[2]==2^7)
+
+
 
 # For each outcome generate null distribution, return pvalue
 theps<-rep(NA,length(aggoutcomes))
