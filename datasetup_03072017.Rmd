@@ -287,14 +287,15 @@ or.df$claim.date <-as.Date(or.df$Initial.Claim.Entered.Date, origin = "1900-01-0
 or.df$uiexit.date <-as.Date(or.df$Date.Claiming.Stopped, origin = "1900-01-01")
 
 start.date <- strptime(c("28.03.2016"), format = "%d.%m.%Y")
-end.date <- strptime(c("30.9.2016"), format = "%d.%m.%Y")
+end.date <- strptime(c("01.10.2016"), format = "%d.%m.%Y")
 #end.date<-ymd("2016-09-30")
 #start.date<-ymd("2016-03-28")
 
 #or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, start.date))
 # Time to Exit should be difference between 
 or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, or.df$claim.date))
-
+class(or.df$time.to.exit)
+range(or.df$time.to.exit,na.rm=T)
 # 671 have exit dates before intial claims dates before the program began
 with(or.df[or.df$claim.date>=start.date&or.df$claim.date<=end.date,],sum(time.to.exit<=0,na.rm=T))
 
