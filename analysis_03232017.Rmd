@@ -520,7 +520,7 @@ for(i in aggoutcomes){
     #right<-mean(theNull>=theITTS[i])
     #print(c(left,right))
     #theps_noneg[i]<-2*c(left,right)[which.min(c(left,right))]
-    theps_noneg[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+    theps_noneg[i]<-mean(abs(theNull)>=abs(theITTS_noneg[i]))
 
 }
 
@@ -627,7 +627,7 @@ for(i in aggoutcomes){
     #right<-mean(theNull>=theITTS[i])
     #print(c(left,right))
     #theps2[i]<-2*c(left,right)[which.min(c(left,right))]
-    theps2[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+    theps2[i]<-mean(abs(theNull)>=abs(theITTS2[i]))
 
 }
 
@@ -714,7 +714,7 @@ for(i in aggoutcomes){
     #right<-mean(theNull>=theITTS[i])
     #print(c(left,right))
     #theps_welcome[i]<-2*c(left,right)[which.min(c(left,right))]
-    theps_welcome[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+    theps_welcome[i]<-mean(abs(theNull)>=abs(theITTS_welcome[i]))
 
 }
 
@@ -794,7 +794,7 @@ for(i in aggoutcomes){
     #right<-mean(theNull>=theITTS[i])
     #print(c(left,right))
     #theps_month[i]<-2*c(left,right)[which.min(c(left,right))]
-    theps_month[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+    theps_month[i]<-mean(abs(theNull)>=abs(theITTS_month[i]))
 
 }
 # wrkdat_month$treatF <- factor(wrkdat_month$treat,levels=c("1","0"))
@@ -832,6 +832,7 @@ monthly_plot
 
 # Adjusting for Individual covariates
 
+Below we residualize each outcome on a set of covariates (WBA, age, gender, education, race indicators, latinx indicator, ex-ofender status and veteran status) before calculating the pairwise treatment effects
 
 ```{r residual_adj}
 
@@ -901,7 +902,7 @@ stopifnot(all.equal(wrkdat_adj$welcome_adjMD[wrkdat_adj$pair=="a"],
 		    ) )
 ```
 
-# Office Level Effects
+# Office Level Effects adjusted for Individual Covariates
 
 ```{r estimates_adj, results='hide'}
 ## First, just show two equivalent ways to get the ITT
@@ -939,7 +940,7 @@ for(i in aggoutcomes){
     #right<-mean(theNull>=theITTS[i])
     #print(c(left,right))
     #theps_adj[i]<-2*c(left,right)[which.min(c(left,right))]
-    theps_adj[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+    theps_adj[i]<-mean(abs(theNull)>=abs(theITTS_adj[i]))
 
 }
 

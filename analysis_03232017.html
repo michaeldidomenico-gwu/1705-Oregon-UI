@@ -1118,36 +1118,36 @@ Number of observations deleted due to missingness: 0 </code></pre>
 <p>A small portion of the cases appear to have “negative” times to exiting the program, (N=671 or 2.9 percent of cases)</p>
 <p>Time to exiting the program is calculated by the subtracting participant’s initial unemployment claim date from the date they exited the unemployment insurance. An individual is considered to have exited the program after three weeks of not claiming benefits. Thus exit dates are always on Sundays when a new claim period begins, while initial claim date may be any day during the week. In fact nearly 86 percent of these cases have values implying exit dates within seven days of the claim process, suggesting most of the negative cases are due to disconnect between how claims are processed and exit times are calculated. Still, as a robustness check, we repeat the main analysis, removing participants with negative times to exit. The results are essentially unchanged.</p>
 <pre><code>                          mu0       mu1 theITTS_noneg theps_noneg
-welcome_mean         0.655541    0.6733      0.017719     0.53125
-uiexit_mean          0.564169    0.5603     -0.003856     0.62500
-employed_mean        0.279970    0.2774     -0.002568     0.79688
-time.to.exit_mean  970.620186  973.1072      2.487038     0.85938
+welcome_mean         0.655541    0.6733      0.017719     0.59375
+uiexit_mean          0.564169    0.5603     -0.003856     0.73438
+employed_mean        0.279970    0.2774     -0.002568     0.82812
+time.to.exit_mean  970.620186  973.1072      2.487038     0.96875
 plans01_mean         0.005636    0.6183      0.612669     0.01562
-wages_mean        3411.498264 3627.7790    216.280781     0.87500
-exhaust_mean         0.148034    0.1491      0.001089     0.71875</code></pre>
+wages_mean        3411.498264 3627.7790    216.280781     0.85938
+exhaust_mean         0.148034    0.1491      0.001089     0.81250</code></pre>
 </div>
 <div id="effects-on-those-with-more-time-in-the-program" class="section level1">
 <h1>Effects on Those With More Time in the Program?</h1>
 <p>We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016, (N=11460</p>
 <p>Here are the estimated ITTs and p-values for the null of no effects among the group that had the most time in the program.</p>
-<pre><code>                          mu0       mu1   theITTS2 theps2
-welcome_mean         0.649995    0.6662   0.016198 0.6250
-uiexit_mean          0.608563    0.6011  -0.007466 0.6562
-employed_mean        0.280897    0.2639  -0.017000 1.0000
-time.to.exit_mean 1366.503803 1383.1404  16.636548 0.8906
-plans01_mean         0.006534    0.6002   0.593661 0.0000
-wages_mean        3108.341639 3396.4390 288.097359 0.7500
-exhaust_mean         0.186605    0.1962   0.009574 0.8281</code></pre>
+<pre><code>                          mu0       mu1   theITTS2  theps2
+welcome_mean         0.649995    0.6662   0.016198 0.76562
+uiexit_mean          0.608563    0.6011  -0.007466 0.57812
+employed_mean        0.280897    0.2639  -0.017000 0.50000
+time.to.exit_mean 1366.503803 1383.1404  16.636548 0.71875
+plans01_mean         0.006534    0.6002   0.593661 0.01562
+wages_mean        3108.341639 3396.4390 288.097359 0.62500
+exhaust_mean         0.186605    0.1962   0.009574 0.20312</code></pre>
 <div id="effects-conditional-on-completing-the-welcome" class="section level2">
 <h2>Effects conditional on completing the welcome</h2>
 <p>Here are the estimated ITTs and p-values for the null of no effects among the group that completed the initial welcome meeting.</p>
 <pre><code>                          mu0       mu1 theITTS_welcome theps_welcome
-uiexit_mean          0.618474    0.6102       -0.008278        0.6719
-employed_mean        0.282532    0.2802       -0.002317        0.7031
-time.to.exit_mean  855.025663  866.9044       11.878738        0.8281
-plans01_mean         0.008313    0.8820        0.873684        0.2500
-wages_mean        3509.175783 3770.1922      261.016407        0.7812
-exhaust_mean         0.185785    0.1932        0.007413        0.8750</code></pre>
+uiexit_mean          0.618474    0.6102       -0.008278       0.50000
+employed_mean        0.282532    0.2802       -0.002317       0.81250
+time.to.exit_mean  855.025663  866.9044       11.878738       0.64062
+plans01_mean         0.008313    0.8820        0.873684       0.01562
+wages_mean        3509.175783 3770.1922      261.016407       0.73438
+exhaust_mean         0.185785    0.1932        0.007413       0.45312</code></pre>
 </div>
 <div id="separate-effects-by-month" class="section level2">
 <h2>Separate Effects by Month</h2>
@@ -1156,6 +1156,7 @@ exhaust_mean         0.185785    0.1932        0.007413        0.8750</code></pr
 </div>
 <div id="adjusting-for-individual-covariates" class="section level1">
 <h1>Adjusting for Individual covariates</h1>
+<p>Below we residualize each outcome on a set of covariates (WBA, age, gender, education, race indicators, latinx indicator, ex-ofender status and veteran status) before calculating the pairwise treatment effects</p>
 <table>
 <thead>
 <tr class="header">
@@ -1703,8 +1704,8 @@ exhaust_mean         0.185785    0.1932        0.007413        0.8750</code></pr
 </tbody>
 </table>
 </div>
-<div id="office-level-effects-1" class="section level1">
-<h1>Office Level Effects</h1>
+<div id="office-level-effects-adjusted-for-individual-covariates" class="section level1">
+<h1>Office Level Effects adjusted for Individual Covariates</h1>
 <table>
 <thead>
 <tr class="header">
@@ -1721,49 +1722,49 @@ exhaust_mean         0.185785    0.1932        0.007413        0.8750</code></pr
 <td align="right">-0.0064</td>
 <td align="right">0.0079</td>
 <td align="right">0.0143</td>
-<td align="right">NA</td>
+<td align="right">0.9531</td>
 </tr>
 <tr class="even">
 <td>uiexit_adj_mean</td>
 <td align="right">0.0021</td>
 <td align="right">-0.0026</td>
 <td align="right">-0.0048</td>
-<td align="right">NA</td>
+<td align="right">0.6250</td>
 </tr>
 <tr class="odd">
 <td>employed_adj_mean</td>
 <td align="right">0.0015</td>
 <td align="right">-0.0004</td>
 <td align="right">-0.0019</td>
-<td align="right">NA</td>
+<td align="right">0.9219</td>
 </tr>
 <tr class="even">
 <td>time.to.exit_adj_mean</td>
 <td align="right">-3.9514</td>
 <td align="right">3.6255</td>
 <td align="right">7.5769</td>
-<td align="right">NA</td>
+<td align="right">0.7188</td>
 </tr>
 <tr class="odd">
 <td>plans01_adj_mean</td>
 <td align="right">-0.2856</td>
 <td align="right">0.2995</td>
 <td align="right">0.5851</td>
-<td align="right">NA</td>
+<td align="right">0.0156</td>
 </tr>
 <tr class="even">
 <td>wages_adj_mean</td>
 <td align="right">-11.9741</td>
 <td align="right">-3.8702</td>
 <td align="right">8.1040</td>
-<td align="right">NA</td>
+<td align="right">1.0000</td>
 </tr>
 <tr class="odd">
 <td>exhaust_adj_mean</td>
 <td align="right">0.0005</td>
 <td align="right">0.0000</td>
 <td align="right">-0.0005</td>
-<td align="right">NA</td>
+<td align="right">0.9688</td>
 </tr>
 </tbody>
 </table>
