@@ -833,7 +833,124 @@ monthly_plot
 # Adjusting for Individual covariates
 
 
-```{r}
+```{r residual_adj}
+
+# Residualize outcomes
+ outcomes <- c("welcome","uiexit","employed","time.to.exit","plans01","wages","exhaust")
+
+## To DO: Impute missing data with medians. maybe with naImpute?
+theResids<- sapply(outcomes,function(v){
+			  resid(lm(reformulate("WBA+Age+ female01+ Education.Level+
+                                black01+ asian01+ nhpi01+ amerind01 + unknown01+
+                                +latinx01+
+                                exoffender01+Veteran",
+			                      response=v),data=or.df,na.action=na.exclude))})
+stopifnot(dim(theResids)[1]==dim(or.df)[1])
+colnames(theResids)<-paste(colnames(theResids),"_adj",sep="")
+outcomes<-colnames(theResids)
+aggvars <- c("insert",outcomes)
+
+or.df<-cbind(or.df,theResids)
+
 ```
 
+```{r}
+
+officedat_adj <- or.df %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_adj <- as.data.frame(officedat_adj[,c("fonum",grep("mean",names(officedat_adj),value=TRUE),"wages_adj_sum","insert_n")])
+row.names(officedf_adj)<-officedf_adj$fonum
+names(officedf_adj)[names(officedf_adj)%in%c("wages_adj_sum","insert_n")] <- c("missingwage","N")
+
+```
+
+
+```{r mergeontreatment_adj}
+## Add treatment assignment info
+officedf_adj$fonum <- as.numeric(officedf_adj$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_adj <- inner_join(officedf_adj,pairs2,by="fonum")
+wrkdat_adj <- wrkdat_adj[order(wrkdat_adj$pair,wrkdat_adj$treat),]
+row.names(wrkdat_adj) <- as.character(wrkdat_adj$fonum)
+
+pairweights<-wrkdat_adj %>% group_by(pair) %>% dplyr::summarise(
+    weight=sum(N)/2 # weight by mean size of pair
+ 
+)
+n<-sum(wrkdat_adj$N)
+pairweights$weight<-pairweights$weight/n
+wrkdat_adj<-inner_join(wrkdat_adj,pairweights,by="pair")
+
+
+
+```
+
+
+```{r centering_adj}
+## Pair-mean center to handle the pairing:
+wrkdat_adj$treatMD <- with(wrkdat_adj,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_adj[,paste(i,"MD",sep="")]<- wrkdat_adj[[nm]] - ave(wrkdat_adj[[nm]],wrkdat_adj$pair)
+}
+knitr::kable(wrkdat_adj) #If this table is too big it could be broken into pieces
+
+## Check the pair centering
+stopifnot(all.equal(wrkdat_adj$welcome_adjMD[wrkdat_adj$pair=="a"],
+		    with(wrkdat_adj[wrkdat_adj$pair=="a",], welcome_adj_mean - mean(welcome_adj_mean))
+		    ) )
+```
+
+# Office Level Effects
+
+```{r estimates_adj, results='hide'}
+## First, just show two equivalent ways to get the ITT
+# Note equal weights within pairs gives same values, unequal weights gives different values
+
+
+
+#stopifnot(all.equal(coef(welcomeATEa)[[2]],coef(welcomeATE)[[2]]))
+
+## Next calc the diff of means for all outcomes
+aggoutcomes <- paste(outcomes,"MD",sep="")
+theITTS_adj <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat_adj,weights=weight))[[2]]
+})
+theITTS_adj
+theMeans_adj<-sapply(paste(outcomes,"_mean",sep=""),function(v){
+    mu0<-wtd.mean(wrkdat_adj[wrkdat_adj$treat==0,v],weights=wrkdat_adj$weight[wrkdat_adj$treat==0])
+    mu1<-wtd.mean(wrkdat_adj[wrkdat_adj$treat==1,v],weights=wrkdat_adj$weight[wrkdat_adj$treat==1])
+    return(cbind(mu0=mu0,mu1=mu1))
+    })
+rownames(theMeans_adj)<-c("mu0","mu1")
+```
+
+
+```{r ripvalues_adj}
+
+
+# For each outcome generate null distribution, return pvalue
+theps_adj<-rep(NA,length(aggoutcomes))
+names(theps_adj)<-aggoutcomes
+for(i in aggoutcomes){
+    theNull<-sapply(1:128,function(x){
+    coef(lm(reformulate("omega[,x]",response=i),data=wrkdat_adj,weights=weight))[[2]]})
+    #left<-mean(theNull<=theITTS[i])
+    #right<-mean(theNull>=theITTS[i])
+    #print(c(left,right))
+    #theps_adj[i]<-2*c(left,right)[which.min(c(left,right))]
+    theps_adj[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+
+}
+
+
+
+
+
+```
+
+```{r,results="markdown"}
+kable(cbind(t(theMeans_adj),theITTS_adj,theps_adj))
+
+```
 
