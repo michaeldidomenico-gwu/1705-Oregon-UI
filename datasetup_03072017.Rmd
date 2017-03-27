@@ -270,6 +270,19 @@ or.df$fonum <- or.df$X277.Field.Office
 ```{r}
 or.df$plans <- as.numeric(or.df$X..of.PEPP.Plans)
 or.df$wages <- or.df$Amount.of.Wages
+
+table(or.df$Exhausted.Benefits.Flag)
+or.df$exhaust<-ifelse(or.df$Exhausted.Benefits.Flag=="Y",1,0)
+table(or.df$Exhausted.Benefits.Flag,or.df$exhaust)
+or.df$plans01<-ifelse(or.df$plans>0,1,0)
+table(or.df$plans01,useNA="ifany")
+
+# Recode Exit date
+table(or.df$uiexit,or.df$exhaust)
+or.df$uiexit[or.df$exhaust==1]<-0
+table(or.df$uiexit,or.df$exhaust)
+
+
 or.df$uiexit.date <- as.Date(or.df$Date.Claiming.Stopped, origin = "1900-01-01")
 or.df$claim.date <-  as.Date(or.df$Initial.Claim.Entered.Date, origin = "1900-01-01")
 range(or.df$claim.date)
@@ -285,16 +298,6 @@ summary(or.df$time.to.exit[or.df$time.to.exit<0])
 or.df$month<-month(or.df$Initial.Claim.Entered.Date)
 table(or.df$time.to.exit[or.df$time.to.exit<0],or.df$month[or.df$time.to.exit<0])
 
-table(or.df$Exhausted.Benefits.Flag)
-or.df$exhaust<-ifelse(or.df$Exhausted.Benefits.Flag=="Y",1,0)
-table(or.df$Exhausted.Benefits.Flag,or.df$exhaust)
-or.df$plans01<-ifelse(or.df$plans>0,1,0)
-table(or.df$plans01,useNA="ifany")
-
-# Recode Exit date
-table(or.df$uiexit,or.df$exhaust)
-or.df$uiexit[or.df$exhaust==1]<-0
-table(or.df$uiexit,or.df$exhaust)
 
 
 
@@ -306,10 +309,40 @@ Variables like race and lowest acceptable age, veteran status, etc.. were
 entered pre-treatment and in ignorance of treatment status during the filling
 out of their online profile.
 
+```{r}
+# Race
+or.df$white01<-ifelse(or.df$Race.White.Flag=="Y",1,0)
+or.df$black01<-ifelse(or.df$Race.African.American.Flag=="Y",1,0)
+or.df$asian01<-ifelse(or.df$Race.Asian.Flag=="Y",1,0)
+or.df$nhpi01<-ifelse(or.df$Race.Native.Hawaiian.or.Pacific.Islander.Flag=="Y",1,0)
+or.df$amerind01<-ifelse(or.df$Race.American.Indian.or.Alaskan.Native.Flag=="Y",1,0)
+or.df$unknown01<-ifelse(or.df$Race.Unknown.Flag=="Y",1,0)
+
+# Gender
+or.df$female01<-ifelse(or.df$Gender.Code=="F",1,0)
+table(or.df$Gender.Code,or.df$female01,useNA="ifany")
+# Treat ^ as not female
+
+# Ex felon
+or.df$exoffender01<-ifelse(or.df$Ex.Offender.Flag=="Y",1,0)
+# Code ^ as nos...
+table(or.df$exoffender01,or.df$Ex.Offender.Flag)
+
+# Veteran
+
+table(or.df$Veteran)
+
+# Ethnicity
+table(or.df$Ethnicity.Hispanic.Latino.Flag)
+or.df$latinx01<-ifelse(or.df$Ethnicity.Hispanic.Latino.Flag=="Y",1,0)
+
+```
+
+
 ## Save the files
 
 ```{r}
-save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,or.df8,or.df9,or.df10, file="Data/monthlyordat.rda")
-save(or.df, file="Data/or.df.rda")
+save(or.df1,or.df2,or.df3,or.df4,or.df5,or.df6,or.df7,or.df8,or.df9,or.df10, file="Data/clean/monthlyordat.rda")
+save(or.df, file="Data/clean/or.df.rda")
 ```
 
