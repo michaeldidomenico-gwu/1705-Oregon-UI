@@ -52,8 +52,6 @@ or.df7 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 7) #Sep
 or.df8 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 8) #October
 or.df9 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 9) #November
 or.df10 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 10) #December
-library(lubridate)
-or.df10$Initial.Claim.Entered.Date
 
 # Create a merged dataframe from the first 7 months
 
@@ -187,6 +185,7 @@ newids <- or.wages2016Q3$PEP.Unique.ID[!(or.wages2016Q3$PEP.Unique.ID %in% or.df
 
 stopifnot(length(existingids)+length(newids)==nrow(or.wages2016Q3))
 
+
 # Check initial claims dates
 range(or.wages2016Q3$Initial.Claim.Entered.Date)
 stopifnot(all.equal(or.df[existingids,"Initial.Claim.Entered.Date"],or.wages2016Q3[existingids,"Initial.Claim.Entered.Date"]))
@@ -207,7 +206,6 @@ summary(or.df[existingids,"Amount.of.Wages"]-or.wages2016Q3[existingids,"Amount.
 
 ## The Wages File is the File of Record??? 
 
-or.df$PEP.Unique.ID
 or.df[existingids,c("Employed.Flag","Quarter.of.Wages","Amount.of.Wages")]<-or.wages2016Q3[existingids,c("Employed.Flag","Quarter.of.Wages","Amount.of.Wages")]
 # Add new cases
 # All newids cases have missig office number, excluded from analysis.
@@ -281,20 +279,25 @@ table(or.df$plans01,useNA="ifany")
 table(or.df$uiexit,or.df$exhaust)
 or.df$uiexit[or.df$exhaust==1]<-0
 table(or.df$uiexit,or.df$exhaust)
+class(or.df$Initial.Claim.Entered.Date)
+class(or.df$Date.Claiming.Stopped)
+library(lubridate)
+class(or.df$Date.Claiming.Stopped)
+or.df$claim.date <-as.Date(or.df$Initial.Claim.Entered.Date, origin = "1900-01-01")
+or.df$uiexit.date <-as.Date(or.df$Date.Claiming.Stopped, origin = "1900-01-01")
 
-
-or.df$uiexit.date <- as.Date(or.df$Date.Claiming.Stopped, origin = "1900-01-01")
-or.df$claim.date <-  as.Date(or.df$Initial.Claim.Entered.Date, origin = "1900-01-01")
-range(or.df$claim.date)
 start.date <- strptime(c("28.03.2016"), format = "%d.%m.%Y")
-end.date <- strptime(c("30.09.2016"), format = "%d.%m.%Y")
+end.date <- strptime(c("30.9.2016"), format = "%d.%m.%Y")
+#end.date<-ymd("2016-09-30")
+#start.date<-ymd("2016-03-28")
+
 #or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, start.date))
 # Time to Exit should be difference between 
 or.df$time.to.exit <- ifelse(or.df$uiexit==1, difftime(or.df$uiexit.date, or.df$claim.date), difftime(end.date, or.df$claim.date))
-range(or.df$time.to.exit)
-# 957 have exit dates before intial claims dates before the program began
-sum(or.df$time.to.exit<0)
-summary(or.df$time.to.exit[or.df$time.to.exit<0])
+
+# 671 have exit dates before intial claims dates before the program began
+with(or.df[or.df$claim.date>=start.date&or.df$claim.date<=end.date,],sum(time.to.exit<=0,na.rm=T))
+
 or.df$month<-month(or.df$Initial.Claim.Entered.Date)
 table(or.df$time.to.exit[or.df$time.to.exit<0],or.df$month[or.df$time.to.exit<0])
 
