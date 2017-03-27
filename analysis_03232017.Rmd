@@ -52,6 +52,7 @@ library(coin)
 library(dplyr)
 library(lubridate)
 library(mosaic)
+library(Hmisc)
 ```
 
 The two working data files are produced by the `datasetup.Rmd` file.
@@ -156,12 +157,13 @@ covered by the data pull included:
  - `uiexit` Whether the person stopped making unemployment claims for 3 weeks in a row.
  - `employed` Whether a different company reports wages for the person in a quarter after the quarter they applied for UI
  - `time.to.exit` The number of days between making the first claim and exiting the program.
- - `plans` Number of action plans uploaded by an individual in the program
+ - `plans01` Percen completing any action plans in the program
  - `wages` The wages earned by the person (?average? ?weekly?)
 
 
 ```{r results=FALSE}
-outcomes <- c("welcome","uiexit","employed","time.to.exit","plans","wages")
+
+    outcomes <- c("welcome","uiexit","employed","time.to.exit","plans01","wages","exhaust")
 summary(or.df[,outcomes])
 aggvars <- c("insert",outcomes)
 ```
@@ -176,7 +178,7 @@ Because the intervention was randomized at the level of the employment office, w
 
 ```{r}
 # Remove Cases after Sept 30, 2016
-or.df<-or.df[or.df$claim.date<=ymd("2016-09-30"),]
+or.df<-or.df[or.df$claim.date<=ymd("2016-09-30")&or.df$claim.date>=ymd("2016-03-28"),]
 ## This next creates more columns than I would like
 officedat <- or.df[or.df$claim.date<=ymd("2016-09-30"),] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
 officedf <- as.data.frame(officedat[,c("fonum",grep("mean",names(officedat),value=TRUE),"wages_sum","insert_n")])
@@ -249,6 +251,13 @@ theITTS <- sapply(aggoutcomes,function(v){
 			  coef(lm(reformulate("treatMD",response=v),data=wrkdat,weights=weight))[[2]]
 })
 theITTS
+wrkdat$weight
+theMeans<-sapply(paste(outcomes,"_mean",sep=""),function(v){
+    mu0<-wtd.mean(wrkdat[wrkdat$treat==0,v],weights=wrkdat$weight[wrkdat$treat==0])
+    mu1<-wtd.mean(wrkdat[wrkdat$treat==1,v],weights=wrkdat$weight[wrkdat$treat==1])
+    return(cbind(mu0=mu0,mu1=mu1))
+    })
+rownames(theMeans)<-c("mu0","mu1")
 ```
 
 
@@ -345,7 +354,8 @@ welcomeATE
 We present differences of means weighted by pair size below --- they are an unbiased estimator of the average treatment effect. To assess the amount of information we have against the null of no effects, we present the results of hypothesis tests. Because the sample size is so small, we use a randomization-based approach. In short, the intervention appeared effective at increasing the number of plans completed, but did not appear influence any of the remaining outcomes.
 
 ```{r}
-cbind(theITTS,theps)
+cbind(t(theMeans),theITTS,theps)
+
 ```
 
 
@@ -495,6 +505,7 @@ pairweights_noneg$weight<-pairweights_noneg$weight/n
 wrkdat_noneg<-inner_join(wrkdat_noneg,pairweights_noneg,by="pair")
 
 
+
 aggoutcomes <- paste(outcomes,"MD",sep="")
 theITTS_noneg <- sapply(aggoutcomes,function(v){
 			  coef(lm(reformulate("treatMD",response=v),data=wrkdat_noneg,weights=weight))[[2]]
@@ -522,7 +533,12 @@ for(i in aggoutcomes){
 # })
 # 
 # npcresults_nonneg <- NPC(wrkdat_noneg,tr.var="treat",tr.label="1",y.vars=paste(outcomes[-5],"_mean",sep=""),block.var="pair",alternative="two.sided",return.matrix=TRUE,FWE.adj=FALSE,print.steps=FALSE)
-
+theMeans_noneg<-sapply(paste(outcomes,"_mean",sep=""),function(v){
+    mu0<-wtd.mean(wrkdat_noneg[wrkdat_noneg$treat==0,v],weights=wrkdat_noneg$weight[wrkdat_noneg$treat==0])
+    mu1<-wtd.mean(wrkdat_noneg[wrkdat_noneg$treat==1,v],weights=wrkdat_noneg$weight[wrkdat_noneg$treat==1])
+    return(cbind(mu0=mu0,mu1=mu1))
+    })
+rownames(theMeans_noneg)<-c("mu0","mu1")
 ```
 
 
@@ -532,7 +548,7 @@ Time to exiting the program is calculated by the subtracting participant's initi
 
 
 ```{r}
-cbind(theITTS_noneg,theps_noneg)
+cbind(t(theMeans_noneg),theITTS_noneg,theps_noneg)
 ```
 
 
@@ -560,7 +576,7 @@ row.names(wrkdat2) <- as.character(wrkdat2$fonum)
 ```
 
 
-```{r}
+```{r,results="hide"}
 ## Pair-mean center to handle the pairing:
 
 wrkdat2$treatMD <- with(wrkdat2,treat - ave(treat,pair))
@@ -592,6 +608,12 @@ theITTS2 <- sapply(aggoutcomes,function(v){
 			  coef(lm(reformulate("treatMD",response=v),data=wrkdat2,weights=weight))[[2]]
 })
 theITTS2
+theMeans2<-sapply(paste(outcomes,"_mean",sep=""),function(v){
+    mu0<-wtd.mean(wrkdat2[wrkdat2$treat==0,v],weights=wrkdat2$weight[wrkdat2$treat==0])
+    mu1<-wtd.mean(wrkdat2[wrkdat2$treat==1,v],weights=wrkdat2$weight[wrkdat2$treat==1])
+    return(cbind(mu0=mu0,mu1=mu1))
+    })
+rownames(theMeans2)<-c("mu0","mu1")
 ```
 
 
@@ -619,12 +641,14 @@ for(i in aggoutcomes){
 # 			 return(pvalue(results))
 # })
 # theps2
+
+
 ```
 
 Here are the estimated ITTs and p-values for the null of no effects among the group that had the most time in the program.
 
 ```{r}
-cbind(theITTS2,theps2)
+cbind(t(theMeans2),theITTS2,theps2)
 ```
 
 
@@ -693,13 +717,20 @@ for(i in aggoutcomes){
     theps_welcome[i]<-mean(abs(theNull)>=abs(theITTS[i]))
 
 }
+
+theMeans_welcome<-sapply(paste(outcomes[-1],"_mean",sep=""),function(v){
+    mu0<-wtd.mean(wrkdat_welcome[wrkdat_welcome$treat==0,v],weights=wrkdat_welcome$weight[wrkdat_welcome$treat==0])
+    mu1<-wtd.mean(wrkdat_welcome[wrkdat_welcome$treat==1,v],weights=wrkdat_welcome$weight[wrkdat_welcome$treat==1])
+    return(cbind(mu0=mu0,mu1=mu1))
+    })
+rownames(theMeans_welcome)<-c("mu0","mu1")
 ```
 
 
 Here are the estimated ITTs and p-values for the null of no effects among the group that completed the initial welcome meeting.
 
 ```{r}
-cbind(theITTS_welcome,theps_welcome)
+cbind(t(theMeans_welcome),theITTS_welcome,theps_welcome)
 ```
 
 
@@ -707,7 +738,7 @@ cbind(theITTS_welcome,theps_welcome)
 
 Below I show the estimated effects by month for each of the six outcomes.
 
-```{r monthly}
+```{r monthly,eval=F}
 # Wrapper Function to calculate by month
 
 monthly_itts<-function(the_month=3){
@@ -795,8 +826,14 @@ monthly_plot<-ggplot(monthly_df,aes(x=the_month,y=theITTS_month))+geom_line()+fa
 
 ```
 
-```{r,results="markup"}
+```{r,eval=F,results="markup"}
 monthly_plot
+```
+
+# Adjusting for Individual covariates
+
+
+```{r}
 ```
 
 
