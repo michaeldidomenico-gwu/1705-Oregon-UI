@@ -1095,7 +1095,6 @@ wagesMD           200.783204     0.87500</code></pre>
 <div id="effects-on-those-with-more-time-in-the-program" class="section level1">
 <h1>Effects on Those With More Time in the Program?</h1>
 <p>We might expect that the effects may be larger among individuals who have spent more time in the program. In particular since wages are reported quarterly, we now re-do the analysis on the subset of respondents with initial claims dates before June 30, 2016, (N=14773</p>
-<pre><code>[1] 14773</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -1620,6 +1619,16 @@ employedMD      -0.015523 1.0000
 time.to.exitMD  -0.207693 1.0000
 plansMD          0.541303 0.0000
 wagesMD        234.287733 0.7344</code></pre>
+<div id="effects-conditional-on-completing-the-welcome" class="section level2">
+<h2>Effects conditional on completing the welcome</h2>
+<p>Here are the estimated ITTs and p-values for the null of no effects among the group that completed the initial welcome meeting.</p>
+<pre><code>               theITTS_welcome theps_welcome
+uiexitMD              0.004347        0.5156
+employedMD           -0.003260        0.6250
+time.to.exitMD        0.164423        0.9219
+plansMD               0.832219        0.2500
+wagesMD             197.554599        0.8125</code></pre>
+</div>
 <div id="separate-effects-by-month" class="section level2">
 <h2>Separate Effects by Month</h2>
 <p>Below I show the estimated effects by month for each of the six outcomes.</p>

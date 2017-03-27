@@ -457,8 +457,8 @@ kable(employed_tab,caption = "ITT for Treatment on Employment Status")
 # Effects Excluding Those With a Short Time on the Program
 
 ```{r,negativeexit,echo=F,results="hide"}
-sum(or.df$time.to.exit<=0)/dim(or.df)[1]
-sum(sort(prop.table(with(or.df[or.df$time.to.exit<=0,],table(time.to.exit))),decreasing = T)[1:5])
+#sum(or.df$time.to.exit<=0)/dim(or.df)[1]
+#sum(sort(prop.table(with(or.df[or.df$time.to.exit<=0,],table(time.to.exit))),decreasing = T)[1:5])
 
 officedat_noneg <- or.df[or.df$time.to.exit>=0,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
 officedf_noneg <- as.data.frame(officedat_noneg[,c("fonum",grep("mean",names(officedat_noneg),value=TRUE),"wages_sum","insert_n")])
@@ -544,7 +544,7 @@ We might expect that the effects may be larger among individuals who have spent 
 
 ```{r agg2}
 
-dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1]
+#dim(or.df[or.df$claim.date<=ymd("2016-06-30"),] )[1]
 ## This next creates more columns than I would like
 officedat2 <- or.df[or.df$claim.date<=ymd("2016-06-30"),] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
 officedf2 <- as.data.frame(officedat2[,c("fonum",grep("mean",names(officedat2),value=TRUE),"wages_sum","insert_n")])
@@ -637,6 +637,70 @@ npcresults2$p.values
 # Here we see that the evidence against the null of no effects for any outcome with a p-value of roughly `r npcresults2$p.values[["NPC"]]`. I also show the individual p-values here because they are exact (as compared to the approximate ones above). The test statistic used here, by default, is Student's T.
 ```
 
+## Effects conditional on completing the welcome
+
+```{r}
+officedat_welcome <- or.df[or.df$welcome==1,] %>% group_by(fonum) %>% summarize_at(aggvars,.funs=funs(mean(.,na.rm=TRUE),sum(is.na(.)),n()))
+officedf_welcome <- as.data.frame(officedat_welcome[,c("fonum",grep("mean",names(officedat_welcome),value=TRUE),"wages_sum","insert_n")])
+row.names(officedf_welcome)<-officedf_welcome$fonum
+names(officedf_welcome)[names(officedf_welcome)%in%c("wages_sum","insert_n")] <- c("missingwage","N")
+
+## Add treatment assignment info
+officedf_welcome$fonum <- as.numeric(officedf_welcome$fonum)
+pairs2$fonum <- pairs2$fo.num
+wrkdat_welcome <- inner_join(officedf_welcome,pairs2,by="fonum")
+wrkdat_welcome <- wrkdat_welcome[order(wrkdat_welcome$pair,wrkdat_welcome$treat),]
+row.names(wrkdat_welcome) <- as.character(wrkdat_welcome$fonum)
+
+## Pair-mean center to handle the pairing:
+
+wrkdat_welcome$treatMD <- with(wrkdat_welcome,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_welcome[,paste(i,"MD",sep="")]<- wrkdat_welcome[[nm]] - ave(wrkdat_welcome[[nm]],wrkdat_welcome$pair)
+}
+
+wrkdat_welcome$treatMD <- with(wrkdat_welcome,treat - ave(treat,pair))
+for(i in outcomes){
+	message(i)
+	nm <- paste(i,"_mean",sep="")
+	wrkdat_welcome[,paste(i,"MD",sep="")]<- wrkdat_welcome[[nm]] - ave(wrkdat_welcome[[nm]],wrkdat_welcome$pair)
+}
+pairweights_welcome<-wrkdat_welcome %>% group_by(pair) %>% dplyr::summarise(
+    weight=sum(N)/2
+)
+n<-sum(wrkdat_welcome$N)
+pairweights_welcome$weight<-pairweights_welcome$weight/n
+wrkdat_welcome<-inner_join(wrkdat_welcome,pairweights_welcome,by="pair")
+
+
+aggoutcomes <- paste(outcomes,"MD",sep="")
+aggoutcomes<-aggoutcomes[-1] #Remove welcome
+theITTS_welcome <- sapply(aggoutcomes,function(v){
+			  coef(lm(reformulate("treatMD",response=v),data=wrkdat_welcome,weights=weight))[[2]]
+})
+
+theps_welcome<-rep(NA,length(aggoutcomes))
+names(theps_welcome)<-aggoutcomes
+for(i in aggoutcomes){
+    theNull<-sapply(1:128,function(x){
+    coef(lm(reformulate("omega[,x]",response=i),data=wrkdat_welcome,weights=weight))[[2]]})
+    #left<-mean(theNull<=theITTS[i])
+    #right<-mean(theNull>=theITTS[i])
+    #print(c(left,right))
+    #theps_welcome[i]<-2*c(left,right)[which.min(c(left,right))]
+    theps_welcome[i]<-mean(abs(theNull)>=abs(theITTS[i]))
+
+}
+```
+
+
+Here are the estimated ITTs and p-values for the null of no effects among the group that completed the initial welcome meeting.
+
+```{r}
+cbind(theITTS_welcome,theps_welcome)
+```
 
 
 ## Separate Effects by Month
