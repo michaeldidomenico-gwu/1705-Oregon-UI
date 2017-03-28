@@ -363,7 +363,7 @@ cbind(t(theMeans),theITTS,theps)
 
 
 
-```{r}
+```{r,eval=F}
 # Test the null of no effects for any outcome
 # Not sure how to implement with weights yet
 
