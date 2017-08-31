@@ -39,69 +39,135 @@ Pepp message -- message number
 
 ```{r Data_Import}
 library("openxlsx")
-filepath <- "Data/PEPP Updated UI Monthly Dataset 030116-123116 NoPassword.xlsx" ## By hand remove the password protection.
+filepath <- "PEPP Updated UI Monthly Dataset 030116-123116 no password.xlsx" ## By hand remove the password protection.
 
-#Create dataframes for each month from Mar - December 2016
-or.df1 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 1) #March
-or.df2 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 2) #April
-or.df3 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 3) #May
-or.df4 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 4) #June
-or.df5 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 5) #July
-or.df6 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 6) #August
-or.df7 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 7) #September
-or.df8 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 8) #October
-or.df9 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 9) #November
-or.df10 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 10) #December
+# Create dataframes for each month from Mar - December 2016
+or_month1 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 1) #March
+or_month2 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 2) #April
+or_month3 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 3) #May
+or_month4 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 4) #June
+or_month5 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 5) #July
+or_month6 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 6) #August
+or_month7 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 7) #September
+or_month8 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 8) #October
+or_month9 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 9) #November
+or_month10 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 10) #December
 
-# Create a merged dataframe from the first 7 months
+# create dataframes for december 2016 and january 2017.
+# something wrong with this in terms of reading dates. Looking at Excel sheets, it seems like there was some
+# manual manipulation of the date fields. I am not sure if we want to go in and re-format in excel or ask for a new
+# pull. some worry the manual manipulation could create errors.
+filepath <- "PEPP UI Monthly Dataset 120116-013117 no password.xlsx"
+or_month11 <- read.xlsx(filepath,check.names=TRUE, sheet = 2) #January
+or_month11[,4] <- as.Date(or_month11[,4], origin = "1900-01-01")
+or_month11[,15] <- as.Date(or_month11[,15], origin = "1970-01-01")
+or_month11[,17] <- as.Date(or_month11[,17], origin = "1970-01-01")
+or_month11[,18] <- as.Date(or_month11[,18], origin = "1970-01-01")
+or_month11[,41] <- as.Date(or_month11[,41], origin = "1970-01-01")
+or_month11[,43] <- as.Date(or_month11[,43], origin = "1970-01-01")
+
+# create dataframes for february 2017
+filepath <- "PEPP UI Monthly Dataset 020117-022817 no password.xlsx"
+or_month12 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 1) #February
+
+# create dataframes for march - 
+filepath <- "PEPP UI Monthly Dataset 030117-073117 no password.xlsx"
+or_month13 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 1) #March
+or_month14 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 2) #April
+or_month15 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 3) #May
+or_month16 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 4) #June
+or_month17 <- read.xlsx(filepath,check.names=TRUE, detectDates=TRUE, sheet = 5) #July
+
+# update names in newer sheets
+# looks like all of the mismatches are for renaming BYE in older files to Claim.BYE in newer files
+# names(or_month11) <- names(or_month1)
+names(or_month11) <- names(or_month1)
+names(or_month12) <- names(or_month1)
+names(or_month13) <- names(or_month1)
+names(or_month14) <- names(or_month1)
+names(or_month15) <- names(or_month1)
+names(or_month16) <- names(or_month1)
+names(or_month17) <- names(or_month1)
+
+# some problem with dates in months 15, 17 -- Date.Claiming.Stopped is numeric but all missing (which could be data problem.
+# about 3% in month 16 have stopped claiming, so strange that not even one person in the 15th or 17th months have stopped
+# or_month11$Date.Claiming.Stopped <- as.Date(or_month11$Date.Claiming.Stopped, format="%Y-%m-%d")
+or_month15$Date.Claiming.Stopped <- as.Date(or_month15$Date.Claiming.Stopped, origin = "1970-01-01")
+or_month17$Date.Claiming.Stopped <- as.Date(or_month17$Date.Claiming.Stopped, origin = "1970-01-01")
 
 ## Check to make sure all column names are the same
-stopifnot(all(names(or.df1)==names(or.df2)))
-stopifnot(all(names(or.df1)==names(or.df3)))
-stopifnot(all(names(or.df1)==names(or.df4)))
-stopifnot(all(names(or.df1)==names(or.df5)))
-stopifnot(all(names(or.df1)==names(or.df6)))
-stopifnot(all(names(or.df1)==names(or.df7)))
-stopifnot(all(names(or.df1)==names(or.df8)))
-stopifnot(all(names(or.df1)==names(or.df9)))
-stopifnot(all(names(or.df1)==names(or.df10)))
+stopifnot(all(names(or_month1)==names(or_month2)))
+stopifnot(all(names(or_month1)==names(or_month3)))
+stopifnot(all(names(or_month1)==names(or_month4)))
+stopifnot(all(names(or_month1)==names(or_month5)))
+stopifnot(all(names(or_month1)==names(or_month6)))
+stopifnot(all(names(or_month1)==names(or_month7)))
+stopifnot(all(names(or_month1)==names(or_month8)))
+stopifnot(all(names(or_month1)==names(or_month9)))
+stopifnot(all(names(or_month1)==names(or_month10)))
+stopifnot(all(names(or_month1)==names(or_month11)))
+stopifnot(all(names(or_month1)==names(or_month12)))
+stopifnot(all(names(or_month1)==names(or_month13)))
+stopifnot(all(names(or_month1)==names(or_month14)))
+stopifnot(all(names(or_month1)==names(or_month15)))
+stopifnot(all(names(or_month1)==names(or_month16)))
+stopifnot(all(names(or_month1)==names(or_month17)))
 
+# Create a merged dataframe for all months
+or_all_months <- rbind.data.frame(or_month1, or_month2, or_month3, or_month4, or_month5, or_month6, or_month7,or_month8,or_month9,
+	or_month10, or_month11,	or_month12, or_month13, or_month14, or_month15, or_month16, or_month17)
 
+dim(or_all_months)
+stopifnot(nrow(or_all_months)==length(unique(or_all_months$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
+nrow(or_all_months)-length(unique(or_all_months$PEP.Unique.ID))
 
-or.df <- rbind(or.df1, or.df2, or.df3, or.df4, or.df5, or.df6, or.df7,or.df8,or.df9,or.df10)
-dim(or.df)
-stopifnot(nrow(or.df)==length(unique(or.df$PEP.Unique.ID))) #ensure there are no duplicate PEP IDs
+# looks like we have 2124 duplicates
+initial_claim_month_year <- format(or_all_months$Initial.Claim.Entered.Date, "%m%y")
+
+# all occur in feb 17 and later, with number growing as time goes on -- check to see if files become cumulative
+duplicates <- duplicated(or_all_months$PEP.Unique.ID)
+table(initial_claim_month_year[duplicates], useNA="always")
+
 ```
 
 Check for missing id:
 
 ```{r}
 ## Make sure only 1 person has missing ID data
-stopifnot(sum(is.na(or.df$PEP.Unique.ID))==1)
-or.df <- or.df[!is.na(or.df$PEP.Unique.ID),]
+stopifnot(sum(is.na(or_all_months$PEP.Unique.ID))==1)
+or_all_months <- or_all_months[!is.na(or_all_months$PEP.Unique.ID),]
 ```
 
 ## Duplicates
 
 ```{r}
 # No duplicate IDs in this dataset
-stopifnot(sum(table(or.df$PEP.Unique.ID)>1)==0)
+stopifnot(sum(table(or_all_months$PEP.Unique.ID)>1)==0)
 ```
 
 ## Checking Dates
 
 ```{r}
-tmp <- table(months(or.df$Initial.Claim.Entered.Date),exclude=c())
-stopifnot(nrow(or.df1[!is.na(or.df1$PEP.Unique.ID),])==tmp[["March"]])
-stopifnot(nrow(or.df2[!is.na(or.df2$PEP.Unique.ID),])==tmp[["April"]])
-stopifnot(nrow(or.df3[!is.na(or.df3$PEP.Unique.ID),])==tmp[["May"]])
-stopifnot(nrow(or.df4[!is.na(or.df4$PEP.Unique.ID),])==tmp[["June"]])
-stopifnot(nrow(or.df5[!is.na(or.df5$PEP.Unique.ID),])==tmp[["July"]])
-stopifnot(nrow(or.df6[!is.na(or.df6$PEP.Unique.ID),])==tmp[["August"]])
-stopifnot(nrow(or.df7[!is.na(or.df7$PEP.Unique.ID),])==tmp[["September"]])
-stopifnot(nrow(or.df8[!is.na(or.df8$PEP.Unique.ID),])==tmp[["October"]])
-stopifnot(nrow(or.df9[!is.na(or.df9$PEP.Unique.ID),])==tmp[["November"]])
-stopifnot(nrow(or.df10[!is.na(or.df10$PEP.Unique.ID),])==tmp[["December"]])
+
+tmp <- table(initial_claim_month_year,exclude=c())
+stopifnot(nrow(or_month1[!is.na(or_month1$PEP.Unique.ID),])==tmp[["0316"]])
+stopifnot(nrow(or_month2[!is.na(or_month2$PEP.Unique.ID),])==tmp[["0416"]])
+stopifnot(nrow(or_month3[!is.na(or_month3$PEP.Unique.ID),])==tmp[["0516"]])
+stopifnot(nrow(or_month4[!is.na(or_month4$PEP.Unique.ID),])==tmp[["0616"]])
+stopifnot(nrow(or_month5[!is.na(or_month5$PEP.Unique.ID),])==tmp[["0716"]])
+stopifnot(nrow(or_month6[!is.na(or_month6$PEP.Unique.ID),])==tmp[["0816"]])
+stopifnot(nrow(or_month7[!is.na(or_month7$PEP.Unique.ID),])==tmp[["0916"]])
+stopifnot(nrow(or_month8[!is.na(or_month8$PEP.Unique.ID),])==tmp[["1016"]])
+stopifnot(nrow(or_month9[!is.na(or_month9$PEP.Unique.ID),])==tmp[["1116"]])
+stopifnot(nrow(or_month10[!is.na(or_month10$PEP.Unique.ID),])==tmp[["1216"]])
+
+stopifnot(nrow(or_month11[!is.na(or_month11$PEP.Unique.ID),])==tmp[["0117"]])
+stopifnot(nrow(or_month12[!is.na(or_month12$PEP.Unique.ID),])==tmp[["0217"]])
+stopifnot(nrow(or_month13[!is.na(or_month13$PEP.Unique.ID),])==tmp[["0317"]])
+stopifnot(nrow(or_month14[!is.na(or_month14$PEP.Unique.ID),])==tmp[["0417"]])
+stopifnot(nrow(or_month15[!is.na(or_month15$PEP.Unique.ID),])==tmp[["0517"]])
+stopifnot(nrow(or_month16[!is.na(or_month16$PEP.Unique.ID),])==tmp[["0617"]])
+stopifnot(nrow(or_month17[!is.na(or_month17$PEP.Unique.ID),])==tmp[["0717"]])
 ```
 
 ## Checking Dates
